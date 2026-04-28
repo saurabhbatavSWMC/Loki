@@ -1,0 +1,2432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BeatStudio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ── TOKENS — LIGHT ───────────────────────────── */
+:root {
+  --paper-0: #F0EBDF;
+  --paper-1: #E6E0D2;
+  --paper-2: #D9D2C1;
+  --ink-0:   #17161A;
+  --ink-1:   #3A3833;
+  --ink-2:   #7A7670;
+  --ink-3:   #B0AAA0;
+  --spot:    #D93A1C;
+  --spot-ink: #B22D13;
+  --spot-dk: #B22D13;   /* alias → spot-ink */
+  --led:     #D93A1C;
+  --deck-grey:#1a1a1e;
+  --deck:     #1a1a1e;  /* alias → deck-grey */
+  --chrome:  #C9C5BC;
+  --shadow:  var(--ink-0);
+  --shadow-soft: rgba(0,0,0,.12);
+  --r-xs:2px; --r-sm:4px; --r-md:8px; --r-lg:14px;
+  --paper-shadow: rgba(20,18,15,0.12);
+  --s-8:48px;
+  --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:24px;--s-6:32px;
+  --ease: cubic-bezier(0.2,0,0,1);
+  --ease-io: cubic-bezier(0.65,0,0.35,1);
+  --ease-in-out: cubic-bezier(0.65,0,0.35,1); /* spec name */
+  --fast:120ms; --med:220ms; --slow:420ms;
+  --dur-fast:120ms; --dur-med:220ms; --dur-slow:420ms; /* spec names */
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --font-disp:'Space Mono',ui-monospace,monospace;
+  --grain-blend: multiply;
+  --grain-opacity: 0.14;
+  --theme-transition: background 280ms ease, color 280ms ease, border-color 280ms ease, box-shadow 280ms ease;
+}
+
+/* ── TOKENS — DARK (STUDIO MODE) ─────────────── */
+[data-theme="dark"] {
+  --paper-0: #1C1A17;
+  --paper-1: #242118;
+  --paper-2: #2C2920;
+  --ink-0:   #EDE8DC;
+  --ink-1:   #C8C2B4;
+  --ink-2:   #7A7670;
+  --ink-3:   #3E3B36;
+  --spot:    #FF4D2E;
+  --spot-ink: #D93A1C;
+  --spot-dk: #D93A1C;   /* alias → spot-ink */
+  --led:     #FF4D2E;
+  --deck-grey:#0F0E12;
+  --deck:     #0F0E12;  /* alias → deck-grey */
+  --chrome:  #4A4640;
+  --shadow:  #000;
+  --shadow-soft: rgba(0,0,0,.4);
+  --grain-blend: screen;
+  --grain-opacity: 0.07;
+}
+
+/* ── RESET ───────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#2a2825;overflow-x:hidden}
+body{font-family:var(--font-mono);-webkit-font-smoothing:antialiased;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:28px;flex-wrap:wrap}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+
+/* ── KEYFRAMES ───────────────────────────────── */
+@keyframes paper-in   {from{transform:translateX(100%);opacity:.4}to{transform:translateX(0);opacity:1}}
+@keyframes paper-back {from{transform:translateX(-40%);opacity:.4}to{transform:translateX(0);opacity:1}}
+@keyframes sheet-up   {from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes sheet-fade {from{opacity:0}to{opacity:1}}
+@keyframes reel-spin  {to{transform:rotate(360deg)}}
+@keyframes rec-pulse  {0%,100%{box-shadow:inset 0 2px 6px rgba(0,0,0,.4),0 0 24px rgba(217,58,28,.8)}50%{box-shadow:inset 0 2px 6px rgba(0,0,0,.4),0 0 40px rgba(217,58,28,1),0 0 60px rgba(217,58,28,.4)}}
+@keyframes blink      {0%,49%{opacity:1}50%,100%{opacity:.25}}
+@keyframes receipt-in {from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes count-pop  {0%{transform:scale(0.4);opacity:0}30%{transform:scale(1.15);opacity:1}70%{transform:scale(1);opacity:1}100%{transform:scale(1.2);opacity:0}}
+@keyframes toast-in   {from{transform:translateX(-50%) translateY(-20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+@keyframes toast-out  {from{opacity:1}to{opacity:0;transform:translateX(-50%) translateY(-10px)}}
+@keyframes clip-flash {0%,100%{opacity:0}50%{opacity:1}}
+@keyframes door-open  {from{transform:scaleY(.15);opacity:.2}to{transform:scaleY(1);opacity:1}}
+@keyframes rewind-in  {0%{transform:translateX(-100%) skewX(-8deg);filter:blur(2px)}100%{transform:translateX(0) skewX(0);filter:blur(0)}}
+@keyframes vu-idle    {0%,100%{--vu-extra:0deg}50%{--vu-extra:3deg}}
+@keyframes saved-flash{0%{background:var(--spot)}100%{background:var(--ink-0)}}
+@keyframes eq-bar     {0%,100%{transform:scaleY(1)}50%{transform:scaleY(.45)}}
+@keyframes pulse-dot  {0%,100%{opacity:1;box-shadow:0 0 6px rgba(217,58,28,.9)}50%{opacity:.4;box-shadow:0 0 2px rgba(217,58,28,.3)}}
+@keyframes home-in    {from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes search-expand {from{opacity:0;transform:scaleX(.92)}to{opacity:1;transform:scaleX(1)}}
+
+/* ── PHONE SHELL ─────────────────────────────── */
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.phone-label{font-family:var(--font-disp);font-size:10px;font-weight:700;letter-spacing:.22em;color:#D9D2C1;text-transform:uppercase}
+.phone-body{width:390px;height:820px;border-radius:44px;overflow:hidden;background:var(--paper-0);position:relative;box-shadow:0 40px 80px rgba(0,0,0,.7),0 0 0 10px #1A1A1F,0 0 0 11px #2A2A30;transition:var(--theme-transition)}
+.phone-notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:32px;border-radius:20px;background:#000;z-index:60;pointer-events:none}
+.phone-statusbar{position:absolute;top:0;left:0;right:0;padding:14px 28px 0;display:flex;justify-content:space-between;z-index:50;font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--ink-0);pointer-events:none}
+.phone-screen{position:absolute;inset:0;padding-top:40px;background:var(--paper-0);color:var(--ink-0);overflow:hidden;display:flex;flex-direction:column;transition:var(--theme-transition)}
+.phone-screen::-webkit-scrollbar{display:none}
+.screen-slide-in  {animation:paper-in 260ms var(--ease-io) both}
+.screen-slide-back{animation:paper-back 260ms var(--ease-io) both}
+
+/* ── GRAIN ───────────────────────────────────── */
+.grain{position:absolute;inset:0;pointer-events:none;z-index:2;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:200px 200px;mix-blend-mode:var(--grain-blend);opacity:var(--grain-opacity)}
+
+/* ── TOAST ───────────────────────────────────── */
+.toast{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:200;
+  background:var(--ink-0);color:var(--paper-0);border-radius:3px;
+  padding:8px 16px;font-size:11px;font-weight:700;letter-spacing:.12em;
+  white-space:nowrap;pointer-events:none;border:2px solid var(--ink-0);
+  box-shadow:2px 2px 0 rgba(0,0,0,.4)}
+.toast.in {animation:toast-in 200ms var(--ease) both}
+.toast.out{animation:toast-out 200ms var(--ease) both}
+
+/* ── SHEET ───────────────────────────────────── */
+.sheet-scrim{position:absolute;inset:0;z-index:100;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);animation:sheet-fade 200ms ease both}
+.sheet-body{position:absolute;bottom:0;left:0;right:0;background:var(--paper-0);border-top:2px solid var(--ink-0);border-radius:8px 8px 0 0;padding:16px 20px 32px;max-height:88%;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,.45);animation:sheet-up 260ms var(--ease) both;transition:var(--theme-transition)}
+.sheet-body::-webkit-scrollbar{display:none}
+.sheet-handle{width:36px;height:4px;background:var(--ink-0);opacity:.25;border-radius:2px;margin:0 auto 14px}
+.sheet-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1.5px solid var(--ink-0)}
+.sheet-title{font-family:var(--font-disp);font-size:10px;font-weight:700;letter-spacing:.2em}
+.menu-row{all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px dashed color-mix(in srgb,var(--ink-0) 25%,transparent);width:100%;box-sizing:border-box;transition:background var(--fast) var(--ease)}
+.menu-row:hover{background:var(--paper-1)}
+.menu-row-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--ink-0);border-radius:3px;background:var(--paper-1);flex-shrink:0;transition:var(--theme-transition)}
+.menu-row-icon.danger{background:var(--spot)}
+.menu-row-label{font-family:var(--font-mono);font-weight:800;font-size:12px;letter-spacing:.04em;color:var(--ink-0);text-transform:uppercase}
+.menu-row-label.danger{color:var(--spot)}
+.menu-row-hint{font-family:var(--font-mono);font-size:10px;color:var(--ink-2);margin-top:2px}
+
+/* ── SCREEN HEADER ───────────────────────────── */
+.scr-header{display:flex;align-items:center;justify-content:space-between;padding:4px 0 12px;border-bottom:1.5px solid var(--ink-0);margin-bottom:16px}
+.scr-header-title{font-family:var(--font-disp);font-size:10px;font-weight:700;letter-spacing:.2em;color:var(--ink-0)}
+.scr-header-side{width:60px}
+.scr-header-side.right{display:flex;justify-content:flex-end}
+.icon-btn{background:transparent;border:none;padding:6px;cursor:pointer;display:flex;transition:opacity var(--fast) var(--ease)}
+.icon-btn:hover{opacity:.6}
+.icon-btn:active{opacity:.4}
+
+/* ── PUSH BUTTON ─────────────────────────────── */
+.push-btn{border-radius:4px;font-family:var(--font-mono);font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:transform 80ms var(--ease),box-shadow 80ms var(--ease)}
+.push-btn:active{transform:translate(2px,2px) !important;box-shadow:1px 1px 0 var(--ink-0) !important}
+.push-btn.ink{background:var(--ink-0);color:var(--paper-0);border:2px solid var(--ink-0);box-shadow:3px 3px 0 var(--shadow)}
+.push-btn.paper{background:var(--paper-0);color:var(--ink-0);border:2px solid var(--ink-0);box-shadow:3px 3px 0 var(--shadow)}
+.push-btn.rec{background:var(--spot);color:var(--paper-0);border:2px solid var(--ink-0);box-shadow:3px 3px 0 var(--shadow)}
+.push-btn.rec:hover{background:var(--spot-dk)}
+.push-btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
+.push-btn.sm{padding:8px 12px;font-size:11px}
+.push-btn.md{padding:12px 18px;font-size:12px}
+.push-btn.lg{padding:16px 24px;font-size:13px}
+
+/* ── TRANSPORT BUTTON ────────────────────────── */
+.tport-btn{display:flex;flex-direction:column;align-items:center;gap:4px}
+.tport-btn button{border-radius:50%;border:2px solid var(--ink-0);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 60ms ease,box-shadow 60ms ease}
+.tport-btn button:not(.active){background:var(--paper-1);box-shadow:2px 2px 0 var(--shadow),inset 0 1px 0 rgba(255,255,255,.08)}
+.tport-btn button.active{background:var(--ink-0);box-shadow:2px 2px 0 var(--shadow),inset 0 1px 0 rgba(255,255,255,.1)}
+.tport-btn button:active{transform:translate(2px,2px);box-shadow:inset 0 2px 4px rgba(0,0,0,.4) !important}
+.tport-label{font-family:var(--font-disp);font-size:8px;font-weight:700;letter-spacing:.16em;color:var(--ink-2)}
+
+/* ── PAPER SWITCH ────────────────────────────── */
+.p-switch{border-radius:3px;background:var(--paper-1);border:2px solid var(--ink-0);position:relative;cursor:pointer;padding:0;transition:background var(--med) var(--ease);flex-shrink:0}
+.p-switch.on{background:var(--ink-0)}
+.p-switch-thumb{position:absolute;top:2px;border-radius:2px;transition:left var(--med) var(--ease)}
+.p-switch.off .p-switch-thumb{background:var(--ink-0)}
+.p-switch.on  .p-switch-thumb{background:var(--paper-0)}
+
+/* ── PAPER SLIDER ────────────────────────────── */
+.p-slider-wrap{position:relative;height:28px;display:flex;align-items:center;flex:1}
+.p-slider-wrap input[type=range]{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer;margin:0;z-index:2;height:100%}
+.p-slider-track{height:10px;width:100%;background:var(--paper-1);border-radius:2px;border:1.5px solid var(--ink-0);position:relative;overflow:hidden}
+.p-slider-thumb{position:absolute;top:0;bottom:0;width:16px;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;pointer-events:none}
+.p-slider-thumb-body{width:14px;height:22px;border-radius:2px;background:var(--ink-0);border:2px solid var(--ink-0);box-shadow:1px 1px 0 var(--ink-0),inset 0 1px 0 rgba(255,255,255,.2);position:relative}
+.p-slider-thumb-body::after{content:'';position:absolute;top:50%;left:1px;right:1px;height:1.5px;background:var(--paper-0);transform:translateY(-50%)}
+
+/* ── STAMP ───────────────────────────────────── */
+.stamp{display:inline-block;padding:3px 9px;border:2px solid var(--spot);color:var(--spot);font-family:var(--font-disp);font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase}
+
+/* ── TAPE LABEL ──────────────────────────────── */
+.tape-label{all:unset;display:flex;align-items:stretch;cursor:pointer;background:var(--paper-0);border:2px solid var(--ink-0);border-radius:3px;box-shadow:2px 2px 0 var(--shadow);overflow:hidden;width:100%;transition:all var(--fast) var(--ease)}
+.tape-label:hover{background:var(--paper-1);transform:translate(1px,1px);box-shadow:1px 1px 0 var(--shadow)}
+.tape-label:active{transform:translate(2px,2px);box-shadow:none}
+.tape-side{width:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:2px solid var(--ink-0);font-family:var(--font-disp);font-weight:700;flex-shrink:0}
+.tape-side-letter{font-size:8px;letter-spacing:.2em}
+.tape-side-num{font-size:18px;letter-spacing:0}
+.tape-body{flex:1;padding:12px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.tape-title{font-family:var(--font-mono);font-weight:800;font-size:14px;letter-spacing:-.02em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tape-meta{font-family:var(--font-mono);font-weight:500;font-size:10px;letter-spacing:.08em;opacity:.7}
+.tape-arrow{width:32px;display:flex;align-items:center;justify-content:center;border-left:1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)}
+
+/* ── WAVEFORM ────────────────────────────────── */
+.waveform-wrap{position:relative;width:100%;display:flex;align-items:center;gap:2px}
+.waveform-bar{flex:1;border-radius:0;transition:background 60ms linear}
+.waveform-playhead{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--spot);pointer-events:none;transition:left 60ms linear}
+
+/* ── PEAK METER ──────────────────────────────── */
+.peak-meter{display:flex;gap:2px;padding:4px;background:#0E0D10;border:2px solid var(--ink-0);border-radius:3px;height:18px}
+.peak-bar{flex:1;border-radius:1px;transition:background 40ms linear}
+
+/* ── SEG DISPLAY ─────────────────────────────── */
+.seg-display{background:#0E0D10;border:2px solid var(--ink-0);border-radius:4px;display:inline-flex;gap:4px;align-items:center;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+
+/* ── WAVEFORM SCRUB CURSOR ───────────────────── */
+.waveform-scrub{cursor:col-resize;user-select:none;-webkit-user-select:none}
+
+/* ── TAKE CARD ───────────────────────────────── */
+.take-card{border:2px solid var(--ink-0);border-radius:3px;padding:10px;position:relative;transition:opacity var(--med) var(--ease),box-shadow var(--med) var(--ease),background var(--med) var(--ease)}
+.take-card.enabled{background:var(--paper-0);box-shadow:2px 2px 0 var(--shadow);opacity:1;transition:var(--theme-transition)}
+.take-card.disabled{background:var(--paper-1);box-shadow:none;opacity:.65;transition:var(--theme-transition)}
+
+/* ── CHIP / FORMAT BUTTONS ───────────────────── */
+.chip{all:unset;cursor:pointer;padding:6px 14px;border:2px solid var(--ink-0);border-radius:3px;font-family:var(--font-mono);font-weight:800;font-size:12px;letter-spacing:.08em;transition:all var(--fast) var(--ease)}
+.chip:not(.active){background:var(--paper-0);color:var(--ink-0)}
+.chip.active-ink{background:var(--ink-0);color:var(--paper-0)}
+.chip.active-spot{background:var(--spot);color:var(--paper-0)}
+.chip:hover:not(.active-ink):not(.active-spot){background:var(--paper-1)}
+
+/* ── IMPORT TABS ─────────────────────────────── */
+.import-tab{all:unset;cursor:pointer;flex:1;text-align:center;padding:6px 4px;border-radius:2px;font-family:var(--font-mono);font-weight:800;font-size:9px;letter-spacing:.12em;transition:all var(--fast) var(--ease)}
+.import-tab.active{background:var(--ink-0);color:var(--paper-0)}
+.import-tab:not(.active){color:var(--ink-0)}
+
+/* ── SCROLL CONTAINERS ───────────────────────── */
+.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scroll-body::-webkit-scrollbar{display:none}
+.scroll-body{scrollbar-width:none}
+.fixed-header{flex-shrink:0;background:var(--paper-0);position:relative;z-index:5;transition:var(--theme-transition)}
+.fixed-footer{flex-shrink:0;padding:12px 20px 14px;border-top:2px solid var(--ink-0);background:var(--paper-0);position:relative;z-index:10;transition:var(--theme-transition)}
+.noscroll::-webkit-scrollbar{display:none}
+.noscroll{scrollbar-width:none}
+
+/* ── TAB BAR ─────────────────────────────────── */
+.tab-bar{position:absolute;bottom:0;left:0;right:0;height:68px;background:color-mix(in srgb,var(--paper-0) 92%,transparent);backdrop-filter:blur(12px);border-top:2px solid var(--ink-0);display:flex;align-items:stretch;z-index:80;transition:var(--theme-transition)}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:transparent;border:none;cursor:pointer;transition:all var(--fast) var(--ease);padding-bottom:6px}
+.tab-btn.active{background:var(--shadow-soft)}
+.tab-btn:active{background:var(--shadow-soft)}
+.tab-label{font-family:var(--font-disp);font-size:8px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+
+/* ── HOME SCREEN SPECIFIC ────────────────────── */
+.section-card{border:2px solid var(--ink-0);border-radius:3px;background:var(--paper-0);box-shadow:3px 3px 0 var(--shadow);margin-bottom:14px;overflow:hidden;transition:var(--theme-transition)}
+.section-card-header{padding:12px 14px 10px;border-bottom:1.5px solid var(--ink-0);display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background var(--fast) var(--ease)}
+.section-card-header:hover{background:var(--paper-1)}
+.session-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent);cursor:pointer;transition:background var(--fast) var(--ease)}
+.session-row:last-of-type{border-bottom:none}
+.session-row:hover{background:var(--paper-1)}
+.beat-row-home{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent);cursor:pointer;transition:background var(--fast) var(--ease)}
+.beat-row-home:last-of-type{border-bottom:none}
+.beat-row-home:hover{background:var(--paper-1)}
+.card-footer-btn{border-top:2px dashed color-mix(in srgb,var(--ink-0) 20%,transparent);padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background var(--fast) var(--ease)}
+.card-footer-btn:hover{background:var(--paper-1)}
+/* ── TYPE SCALE (spec) ───────────────────────── */
+.t-display{font-family:var(--font-mono);font-size:32px;font-weight:800;line-height:1.0;letter-spacing:-.03em;color:var(--ink-0)}
+.t-h1{font-family:var(--font-mono);font-weight:700;font-size:22px;line-height:1.1;letter-spacing:-.02em;color:var(--ink-0)}
+.t-h2{font-family:var(--font-mono);font-weight:700;font-size:17px;line-height:1.2;letter-spacing:-.01em;color:var(--ink-0)}
+.t-body{font-family:var(--font-mono);font-weight:500;font-size:13px;line-height:1.45;color:var(--ink-1)}
+.t-caption{font-family:var(--font-mono);font-weight:500;font-size:11px;line-height:1.3;color:var(--ink-2)}
+.t-label{font-family:var(--font-mono);font-weight:700;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2)}
+.t-stamp{font-family:'Space Mono',monospace;font-weight:700;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spot)}
+.t-led{font-family:var(--font-mono);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--led);text-shadow:0 0 4px rgba(217,58,28,.35)}
+
+/* ── DIVIDERS (spec) ─────────────────────────── */
+.rule{border-top:1px solid var(--ink-0);opacity:.14}
+.rule-bold{border-top:2px solid var(--ink-0)}
+.rule-dash{border-top:1px dashed var(--ink-0);opacity:.3}
+
+/* ── CARD SURFACES (spec) ────────────────────── */
+.card{background:var(--paper-0);border:1px solid var(--ink-0);border-radius:var(--r-sm);position:relative;transition:var(--theme-transition)}
+.card-recessed{background:var(--paper-1);border-radius:var(--r-sm);box-shadow:inset 0 1px 2px var(--paper-shadow);transition:var(--theme-transition)}
+
+/* ── PHYSICAL PRESS (spec) ───────────────────── */
+.btn-press{transition:transform 80ms var(--ease),box-shadow 80ms var(--ease)}
+.btn-press:active{transform:translateY(2px)}
+
+/* ── DARK MODE THEME TOGGLE ──────────────────── */
+.theme-toggle{all:unset;cursor:pointer;display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--ink-0);border-radius:3px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--ink-0);background:var(--paper-1);transition:all var(--dur-fast) var(--ease)}
+.theme-toggle:hover{background:var(--paper-2)}
+.theme-toggle.dark-active{background:var(--ink-0);color:var(--paper-0);border-color:var(--ink-0)}
+
+</style>
+</head>
+<body>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+const BEATS_DATA = [
+  { id:'b1', title:'MIDNIGHT DRIVE', bpm:92,  key:'Am',  format:'WAV', duration:154, side:'A', stamp:'NEW' },
+  { id:'b2', title:'GLASS SKY',      bpm:140, key:'F#m', format:'MP3', duration:182, side:'B', stamp:null  },
+  { id:'b3', title:'SLOW FADE',      bpm:78,  key:'Cm',  format:'WAV', duration:168, side:'A', stamp:'FAV' },
+  { id:'b4', title:'GOLD TEETH',     bpm:148, key:'Gm',  format:'MP3', duration:132, side:'B', stamp:null  },
+  { id:'b5', title:'KILN',           bpm:120, key:'Dm',  format:'WAV', duration:210, side:'A', stamp:null  },
+];
+
+const fmtDur = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+const fmtTC  = ms => {
+  const s=Math.floor(ms/1000), cs=Math.floor((ms%1000)/10);
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}.${String(cs).padStart(2,'0')}`;
+};
+const waveSeed = (seed,len) => {
+  const out=[]; let s=seed;
+  for(let i=0;i<len;i++){s=(s*9301+49297)%233280;out.push(0.2+(s/233280)*0.8);}
+  return out;
+};
+let exportCount = 3;
+
+const SESSIONS_SEED = [
+  {
+    id:'s1', name:'SESSION · APR 20',
+    beatId:'b1',
+    beat:{ id:'b1', title:'MIDNIGHT DRIVE', bpm:92, key:'Am', format:'WAV', duration:154, side:'A', stamp:'NEW' },
+    takes:[
+      { id:'t1', label:'Hook v1',       durationMs:142000, enabled:false, volume:75,  favorite:false, seed:12 },
+      { id:'t2', label:'Hook v2 · best',durationMs:138000, enabled:true,  volume:92,  favorite:true,  seed:22 },
+      { id:'t3', label:null,            durationMs:145000, enabled:true,  volume:80,  favorite:false, seed:33 },
+      { id:'t4', label:'Verse 1',       durationMs:156000, enabled:true,  volume:85,  favorite:false, seed:44 },
+    ],
+    createdAt:'APR 20', updatedAt:'APR 20',
+  },
+  {
+    id:'s2', name:'SESSION · APR 18',
+    beatId:'b2',
+    beat:{ id:'b2', title:'GLASS SKY', bpm:140, key:'F#m', format:'MP3', duration:182, side:'B', stamp:null },
+    takes:[
+      { id:'t5', label:'Chorus',        durationMs:118000, enabled:true,  volume:88,  favorite:true,  seed:55 },
+      { id:'t6', label:null,            durationMs:122000, enabled:true,  volume:80,  favorite:false, seed:66 },
+    ],
+    createdAt:'APR 18', updatedAt:'APR 18',
+  },
+  {
+    id:'s3', name:'SESSION · APR 15',
+    beatId:'b3',
+    beat:{ id:'b3', title:'SLOW FADE', bpm:78, key:'Cm', format:'WAV', duration:168, side:'A', stamp:'FAV' },
+    takes:[
+      { id:'t7', label:'Intro',         durationMs:168000, enabled:true,  volume:82,  favorite:false, seed:77 },
+      { id:'t8', label:'Bridge',        durationMs:160000, enabled:true,  volume:78,  favorite:false, seed:88 },
+      { id:'t9', label:'Outro take',    durationMs:172000, enabled:false, volume:70,  favorite:false, seed:99 },
+      { id:'t10',label:'Final outro',   durationMs:165000, enabled:true,  volume:90,  favorite:true,  seed:110},
+      { id:'t11',label:null,            durationMs:158000, enabled:true,  volume:80,  favorite:false, seed:121},
+      { id:'t12',label:'Best take',     durationMs:163000, enabled:true,  volume:88,  favorite:true,  seed:132},
+    ],
+    createdAt:'APR 15', updatedAt:'APR 15',
+  },
+];
+
+// ═══════════════════════════════════════════════
+// PRIMITIVE COMPONENTS
+// ═══════════════════════════════════════════════
+
+const ICONS = {
+  play:      <polygon points="7 4 20 12 7 20 7 4" fill="currentColor" stroke="none"/>,
+  pause:     <><rect x="6" y="4" width="4" height="16" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" fill="currentColor" stroke="none"/></>,
+  stop:      <rect x="6" y="6" width="12" height="12" fill="currentColor" stroke="none"/>,
+  rec:       <circle cx="12" cy="12" r="7" fill="currentColor" stroke="none"/>,
+  rewind:    <><polygon points="11 5 3 12 11 19 11 5" fill="currentColor" stroke="none"/><polygon points="21 5 13 12 21 19 21 5" fill="currentColor" stroke="none"/></>,
+  forward:   <><polygon points="13 5 21 12 13 19 13 5" fill="currentColor" stroke="none"/><polygon points="3 5 11 12 3 19 3 5" fill="currentColor" stroke="none"/></>,
+  back:      <path d="M15 18l-6-6 6-6"/>,
+  next:      <path d="M9 18l6-6-6-6"/>,
+  plus:      <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+  mic:       <><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10a7 7 0 0 1-14 0"/><line x1="12" y1="17" x2="12" y2="21"/><line x1="8" y1="21" x2="16" y2="21"/></>,
+  upload:    <><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></>,
+  check:     <polyline points="20 6 9 17 4 12"/>,
+  list:      <><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></>,
+  trash:     <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>,
+  share:     <><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/></>,
+  more:      <><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></>,
+  menu:      <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>,
+  close:     <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+  search:    <><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></>,
+  cassette:  <><rect x="3" y="6" width="18" height="12" rx="1"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/><rect x="7" y="16" width="10" height="1.5"/></>,
+  star:      <polygon points="12 2 15 9 22 10 17 15 18 22 12 18 6 22 7 15 2 10 9 9 12 2"/>,
+  loop:      <><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></>,
+  grip:      <><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/></>,
+  rename:    <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+  copy:      <><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>,
+};
+
+const Icon = ({ name, size=20, color='currentColor', stroke=1.75 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">
+    {ICONS[name]}
+  </svg>
+);
+
+const IconBtn = ({ name, onClick, size=18, title }) => (
+  <button className="icon-btn" onClick={onClick} title={title} aria-label={title||name}>
+    <Icon name={name} size={size} color="var(--ink-0)"/>
+  </button>
+);
+
+const Grain = () => (
+  <div className="grain" aria-hidden="true"/>
+);
+
+const ScreenHeader = ({ left, title, right }) => (
+  <div className="scr-header">
+    <div className="scr-header-side">{left}</div>
+    <div className="scr-header-title">{title}</div>
+    <div className="scr-header-side right">{right}</div>
+  </div>
+);
+
+// Sheet renders via portal into .phone-body so it's never clipped by overflow:hidden screens
+const Sheet = ({ open, onClose, title, children }) => {
+  const [portalEl] = React.useState(() => document.createElement('div'));
+
+  React.useEffect(() => {
+    const body = document.querySelector('.phone-body');
+    if (!body) return;
+    body.appendChild(portalEl);
+    return () => { if (body.contains(portalEl)) body.removeChild(portalEl); };
+  }, [portalEl]);
+
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div style={{position:'absolute',inset:0,zIndex:500,display:'flex',alignItems:'flex-end'}}
+      onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="sheet-scrim" onClick={onClose}/>
+      <div className="sheet-body noscroll" style={{position:'relative',zIndex:501,width:'100%'}}>
+        <div className="sheet-handle"/>
+        <div className="sheet-header">
+          <span className="sheet-title">{title}</span>
+          <button className="icon-btn" onClick={onClose} style={{padding:4}}>
+            <Icon name="close" size={16} color="var(--ink-0)"/>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>,
+    portalEl
+  );
+};
+
+const MenuRow = ({ icon, label, hint, danger, onClick, right }) => (
+  <button className="menu-row" onClick={onClick}>
+    {icon && (
+      <div className={`menu-row-icon${danger?' danger':''}`}>
+        <Icon name={icon} size={14} color={danger?'#F0EBDF':'var(--ink-0)'}/>
+      </div>
+    )}
+    <div style={{flex:1}}>
+      <div className={`menu-row-label${danger?' danger':''}`}>{label}</div>
+      {hint && <div className="menu-row-hint">{hint}</div>}
+    </div>
+    {right||<Icon name="next" size={14} color="var(--ink-2)"/>}
+  </button>
+);
+
+const PushBtn = ({ children, onClick, variant='ink', size='md', style:s={}, disabled, title }) => (
+  <button className={`push-btn ${variant} ${size}`} onClick={onClick} disabled={disabled} style={s} title={title}>
+    {children}
+  </button>
+);
+
+const TportBtn = ({ icon, onClick, active, size=48, label, color }) => {
+  const fg = active ? '#F0EBDF' : (color||'var(--ink-0)');
+  const bg = active ? 'var(--ink-0)' : 'var(--paper-1)';
+  return (
+    <div className="tport-btn">
+      <button className={active?'active':''} onClick={onClick}
+        style={{width:size,height:size,background:bg,color:fg,border:'2px solid var(--ink-0)'}}>
+        <Icon name={icon} size={size*0.38} color={fg}/>
+      </button>
+      {label && <span className="tport-label">{label}</span>}
+    </div>
+  );
+};
+
+const PSwitch = ({ on, onChange, size='md' }) => {
+  const w=size==='sm'?36:46, h=size==='sm'?20:24;
+  return (
+    <button className={`p-switch ${on?'on':'off'}`} onClick={()=>onChange(!on)}
+      style={{width:w,height:h}} aria-checked={on} role="switch">
+      <span className="p-switch-thumb" style={{
+        width:h-4,height:h-4,
+        left: on ? w-h+1 : 2,
+      }}/>
+    </button>
+  );
+};
+
+const PSlider = ({ value, onChange, min=0, max=100 }) => {
+  const pct = ((value-min)/(max-min))*100;
+  return (
+    <div className="p-slider-wrap">
+      <input type="range" min={min} max={max} value={value}
+        onChange={e=>onChange(Number(e.target.value))}/>
+      <div className="p-slider-track">
+        {Array.from({length:11}).map((_,i)=>(
+          <div key={i} style={{position:'absolute',top:2,bottom:2,left:`${i*10}%`,width:1,background:'var(--ink-0)',opacity:.18}}/>
+        ))}
+      </div>
+      <div className="p-slider-thumb" style={{left:`${pct}%`}}>
+        <div className="p-slider-thumb-body"/>
+      </div>
+    </div>
+  );
+};
+
+const Stamp = ({ children, rotate=-2, color='var(--spot)' }) => (
+  <span className="stamp" style={{transform:`rotate(${rotate}deg)`,borderColor:color,color}}>{children}</span>
+);
+
+const TapeLabel = ({ title, meta, side='A', color='var(--spot)', onClick, stamp }) => (
+  <div style={{position:'relative',width:'100%'}}>
+    <button className="tape-label" onClick={onClick}>
+      <div className="tape-side" style={{color:'#F0EBDF',background:color}}>
+        <span className="tape-side-letter">SIDE</span>
+        <span className="tape-side-num">{side}</span>
+      </div>
+      <div className="tape-body">
+        <span className="tape-title">{title}</span>
+        <span className="tape-meta">{meta}</span>
+      </div>
+      <div className="tape-arrow">
+        <Icon name="next" size={16} color="var(--ink-0)"/>
+      </div>
+    </button>
+    {stamp && (
+      <div style={{position:'absolute',top:-6,right:8,zIndex:5}}>
+        <Stamp rotate={-4}>{stamp}</Stamp>
+      </div>
+    )}
+  </div>
+);
+
+const Waveform = ({ progress=0, seed=7, height=56, bars=64, color='var(--ink-0)', restColor='#B0AAA0', onScrub, recording=false }) => {
+  const heights = waveSeed(seed, bars);
+  const idx = Math.round(progress*bars);
+  const wrapRef = useRef();
+
+  const handlePointer = useCallback(e => {
+    if(!onScrub||!wrapRef.current) return;
+    const rect = wrapRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    onScrub(Math.max(0, Math.min(1, x)));
+  }, [onScrub]);
+
+  return (
+    <div ref={wrapRef}
+      className={`waveform-wrap${onScrub?' waveform-scrub':''}`}
+      style={{height}}
+      onMouseDown={e=>{if(onScrub){handlePointer(e);const move=ev=>handlePointer(ev);const up=()=>{window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up)};window.addEventListener('mousemove',move);window.addEventListener('mouseup',up)}}}
+      onTouchStart={e=>{if(onScrub){const t=e.touches[0];const rect=wrapRef.current.getBoundingClientRect();onScrub(Math.max(0,Math.min(1,(t.clientX-rect.left)/rect.width)))}}}
+    >
+      {heights.map((h,i)=>(
+        <div key={i} className="waveform-bar"
+          style={{height:`${h*100}%`,background:i<idx?color:restColor}}/>
+      ))}
+      <div className="waveform-playhead" style={{left:`${progress*100}%`,
+        boxShadow:recording?'0 0 6px rgba(217,58,28,.8)':'none'}}/>
+    </div>
+  );
+};
+
+const SpoolWaveform = ({ elapsed, seed=17, height=48 }) => {
+  const bars=80, heights=waveSeed(seed,bars);
+  const offset = (elapsed/50)%bars;
+  const visible = heights.map((_,i)=>heights[Math.floor((i+offset)%bars)]);
+  return (
+    <div style={{position:'relative',height,width:'100%',background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:6,display:'flex',alignItems:'center',gap:2}}>
+        {visible.map((h,i)=>(
+          <div key={i} style={{flex:1,height:`${h*60}%`,background:'var(--ink-0)',borderRadius:0}}/>
+        ))}
+      </div>
+      <div style={{position:'absolute',top:0,bottom:0,left:'50%',width:2,background:'var(--spot)',transform:'translateX(-1px)',boxShadow:'0 0 6px rgba(217,58,28,.6)'}}/>
+      <div style={{position:'absolute',top:-2,left:'calc(50% - 4px)',width:8,height:4,background:'var(--spot)',borderRadius:'0 0 2px 2px'}}/>
+    </div>
+  );
+};
+
+const PeakMeter = ({ level=0.4 }) => {
+  const bars=24, active=Math.round(level*bars);
+  return (
+    <div className="peak-meter">
+      {Array.from({length:bars}).map((_,i)=>{
+        const on=i<active;
+        const color=i>=bars-3?'#D93A1C':i>=bars-8?'#E8A13C':'#9BC653';
+        return <div key={i} className="peak-bar" style={{background:on?color:'rgba(217,58,28,.08)',boxShadow:on?`0 0 3px ${color}`:'none'}}/>;
+      })}
+    </div>
+  );
+};
+
+const SegDisplay = ({ text='00:00.00', size=40 }) => {
+  const w=size*.62, h=size, t=size*.09;
+  const segMap={'0':'abcdef','1':'bc','2':'abdeg','3':'abcdg','4':'bcfg','5':'acdfg','6':'acdefg','7':'abc','8':'abcdefg','9':'abcdfg',':':'dot',' ':''}
+  const ON='#D93A1C', OFF='rgba(217,58,28,.12)';
+  const glow=on=>on?{filter:'drop-shadow(0 0 2px rgba(217,58,28,.6))'}:{};
+
+  const SegChar = ({ch}) => {
+    if(ch===':') return (
+      <svg width={w*.5} height={h}><rect x={w*.2} y={h*.32} width={t} height={t} fill={ON} style={glow(true)}/><rect x={w*.2} y={h*.62} width={t} height={t} fill={ON} style={glow(true)}/></svg>
+    );
+    if(ch==='.') return (
+      <svg width={w*.4} height={h}><rect x={w*.05} y={h-t*1.5} width={t} height={t} fill={ON} style={glow(true)}/></svg>
+    );
+    const segs=segMap[ch]||'';
+    const on=s=>segs.includes(s);
+    const seg=(pts,s)=><polygon points={pts} fill={on(s)?ON:OFF} style={glow(on(s))}/>;
+    return (
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+        {seg(`${t} 0, ${w-t} 0, ${w-t*1.5} ${t}, ${t*1.5} ${t}`,'a')}
+        {seg(`${w} ${t}, ${w-t} ${t*1.5}, ${w-t} ${h/2-t/2}, ${w-t/2} ${h/2}`,'b')}
+        {seg(`${w-t/2} ${h/2}, ${w-t} ${h/2+t/2}, ${w-t} ${h-t*1.5}, ${w} ${h-t}`,'c')}
+        {seg(`${t*1.5} ${h-t}, ${w-t*1.5} ${h-t}, ${w-t} ${h}, ${t} ${h}`,'d')}
+        {seg(`0 ${h-t}, ${t} ${h-t*1.5}, ${t} ${h/2+t/2}, ${t/2} ${h/2}`,'e')}
+        {seg(`${t/2} ${h/2}, ${t} ${h/2-t/2}, ${t} ${t*1.5}, 0 ${t}`,'f')}
+        {seg(`${t} ${h/2-t/2}, ${t*1.5} ${h/2-t}, ${w-t*1.5} ${h/2-t}, ${w-t} ${h/2-t/2}, ${w-t*1.5} ${h/2}, ${t*1.5} ${h/2}`,'g')}
+      </svg>
+    );
+  };
+  return (
+    <div className="seg-display" style={{padding:size*.2}}>
+      {[...text].map((ch,i)=><SegChar key={i} ch={ch}/>)}
+    </div>
+  );
+};
+
+const VUMeter = ({ level=0.4, width=300 }) => {
+  const height=width*.58;
+  const angle=-55+level*110;
+  return (
+    <div style={{width,height,position:'relative',background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:4,overflow:'hidden'}}>
+      <div style={{position:'absolute',inset:0,backgroundImage:'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'200\' height=\'200\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'2\' seed=\'7\'/%3E%3CfeColorMatrix values=\'0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0\'/%3E%3C/filter%3E%3Crect width=\'200\' height=\'200\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',backgroundSize:'200px 200px',mixBlendMode:'multiply',opacity:.14,pointerEvents:'none'}}/>
+      <svg viewBox="0 0 280 160" width="100%" height="100%" style={{display:'block'}}>
+        <path d="M 40 140 A 100 100 0 0 1 240 140" stroke="var(--ink-0)" strokeWidth="1.5" fill="none"/>
+        <path d="M 180 63 A 100 100 0 0 1 240 140" stroke="var(--spot)" strokeWidth="4" fill="none"/>
+        {Array.from({length:11}).map((_,i)=>{
+          const a=-110+(i/10)*110, rad=(a*Math.PI)/180;
+          const x1=140+Math.cos(rad)*100, y1=140+Math.sin(rad)*100;
+          const x2=140+Math.cos(rad)*(i%5===0?88:94), y2=140+Math.sin(rad)*(i%5===0?88:94);
+          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--ink-0)" strokeWidth={i%5===0?1.5:1}/>;
+        })}
+        <text x="40" y="155" fontFamily="JetBrains Mono" fontSize="9" fontWeight="700" fill="var(--ink-0)">-20</text>
+        <text x="140" y="48" fontFamily="JetBrains Mono" fontSize="9" fontWeight="700" fill="var(--ink-0)" textAnchor="middle">-6</text>
+        <text x="228" y="155" fontFamily="JetBrains Mono" fontSize="9" fontWeight="700" fill="var(--spot)">+3</text>
+        <text x="140" y="100" fontFamily="Space Mono" fontSize="8" fontWeight="700" fill="var(--ink-2)" textAnchor="middle" letterSpacing="2">VU</text>
+        <text x="140" y="112" fontFamily="JetBrains Mono" fontSize="7" fill="var(--ink-2)" textAnchor="middle" letterSpacing="1">dB</text>
+        <g transform={`rotate(${angle} 140 140)`} style={{transition:'transform 80ms linear'}}>
+          <line x1="140" y1="140" x2="140" y2="50" stroke="var(--ink-0)" strokeWidth="1.5"/>
+          <polygon points="140,48 138,54 142,54" fill="var(--spot)"/>
+        </g>
+        <circle cx="140" cy="140" r="6" fill="var(--ink-0)"/>
+        <circle cx="140" cy="140" r="2" fill="var(--paper-0)"/>
+      </svg>
+    </div>
+  );
+};
+
+const TapeReel = ({ size=72, spinning=false, speed=4 }) => (
+  <div style={{width:size,height:size,animation:spinning?`reel-spin ${speed}s linear infinite`:'none'}}>
+    <svg viewBox="0 0 100 100" width={size} height={size}>
+      <circle cx="50" cy="50" r="46" fill="var(--paper-0)" stroke="var(--ink-0)" strokeWidth="2.5"/>
+      <circle cx="50" cy="50" r="34" fill="none" stroke="var(--ink-0)" strokeWidth="1" strokeDasharray="1 2" opacity=".5"/>
+      {[0,120,240].map(deg=>(
+        <g key={deg} transform={`rotate(${deg} 50 50)`}>
+          <path d="M50 18 L44 42 L56 42 Z" fill="var(--ink-0)"/>
+          <circle cx="50" cy="30" r="3" fill="var(--paper-0)" stroke="var(--ink-0)" strokeWidth="1"/>
+        </g>
+      ))}
+      <circle cx="50" cy="50" r="10" fill="var(--ink-0)"/>
+      <circle cx="50" cy="50" r="3" fill="var(--paper-0)"/>
+      {[0,72,144,216,288].map(deg=>(
+        <rect key={deg} x="49" y="42" width="2" height="3" fill="var(--paper-0)" transform={`rotate(${deg} 50 50)`}/>
+      ))}
+    </svg>
+  </div>
+);
+
+const Cassette = ({ width=300, spinning=false, title='UNTITLED', side='A', bpm=92 }) => {
+  const h=width*.62, rs=width*.22;
+  return (
+    <div style={{width,height:h,position:'relative',background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:4,overflow:'hidden'}}>
+      <Grain/>
+      <div style={{position:'absolute',top:8,left:8,right:8,height:h*.26,background:'var(--paper-1)',border:'1.5px solid var(--ink-0)',borderRadius:2,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 10px',gap:8}}>
+        <span style={{fontFamily:'Space Mono,monospace',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--spot)'}}>SIDE {side}</span>
+        <span style={{fontFamily:'JetBrains Mono',fontSize:12,fontWeight:800,letterSpacing:'-.02em',color:'var(--ink-0)',textTransform:'uppercase',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'center'}}>{title}</span>
+        <span style={{fontFamily:'JetBrains Mono',fontSize:9,fontWeight:700,letterSpacing:'.1em',color:'var(--ink-2)'}}>{bpm}BPM</span>
+      </div>
+      <div style={{position:'absolute',top:h*.42,left:width*.12}}>
+        <TapeReel size={rs} spinning={spinning} speed={5}/>
+      </div>
+      <div style={{position:'absolute',top:h*.42,right:width*.12}}>
+        <TapeReel size={rs} spinning={spinning} speed={6.5}/>
+      </div>
+      <div style={{position:'absolute',top:h*.42+rs/2-1,left:width*.12+rs/2,right:width*.12+rs/2,height:2,background:'var(--ink-0)'}}/>
+      <div style={{position:'absolute',bottom:h*.08,left:'50%',transform:'translateX(-50%)',width:'60%',height:h*.08,border:'1.5px solid var(--ink-0)',borderRadius:2,display:'flex',justifyContent:'space-around',alignItems:'center',background:'var(--paper-1)'}}>
+        {[0,1,2,3,4,5].map(i=><div key={i} style={{width:4,height:4,borderRadius:'50%',background:'var(--ink-0)'}}/>)}
+      </div>
+      <div style={{position:'absolute',top:4,right:4,width:8,height:8,borderRadius:'50%',background:'var(--spot)'}}/>
+    </div>
+  );
+};
+
+const Toast = ({ msg, visible }) => {
+  if(!msg) return null;
+  return <div className={`toast ${visible?'in':'out'}`}>{msg}</div>;
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 0 — HOME (no scrolling, content fitted)
+// ═══════════════════════════════════════════════
+const HomeScreen = ({ beats, sessions, onOpenSession, onNewSession, onGoLibrary, onGoSessions, onImport, showToast, darkMode, onToggleDark }) => {
+  const [importOpen, setImportOpen] = useState(false);
+  const [moreOpen,   setMoreOpen]   = useState(false);
+  const [importTab,  setImportTab]  = useState('device');
+  const [url,        setUrl]        = useState('');
+
+  const recentSession = sessions[0] || null;
+  const totalTakes    = sessions.reduce((acc,s)=>acc+s.takes.length,0);
+
+  const doImport = () => { setImportOpen(false); setUrl(''); onImport(); };
+
+  return (
+    // HOME: overflow hidden, no scroll — everything must fit within the phone screen minus tab bar
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'var(--paper-0)',overflow:'hidden'}}>
+      <Grain/>
+
+      {/* ── HOME HEADER ── */}
+      <div style={{padding:'16px 20px 0',flexShrink:0,position:'relative',zIndex:4}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingBottom:12,borderBottom:'1.5px solid var(--ink-0)',marginBottom:0}}>
+          <div style={{width:60}}/>
+          <span style={{fontFamily:'var(--font-disp)',fontSize:10,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-0)'}}>HOME</span>
+          <div style={{width:60,display:'flex',justifyContent:'flex-end'}}>
+            <button className="icon-btn" onClick={()=>setMoreOpen(true)} title="Options">
+              <Icon name="more" size={18} color="var(--ink-0)"/>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Sheet open={moreOpen} onClose={()=>setMoreOpen(false)} title="OPTIONS">
+        <MenuRow icon="upload"   label="Import Beat"        hint="Device, URL, or streaming" onClick={()=>{setMoreOpen(false);setImportOpen(true)}}/>
+        <MenuRow icon="share"    label="Export all sessions" hint="Zip of every mix"         onClick={()=>showToast('Export all — coming soon')}/>
+        <MenuRow icon="list"     label="Settings"           hint="Audio, mic, format"        onClick={()=>showToast('Settings — coming soon')}/>
+        <MenuRow icon="more"     label="About BeatStudio"   hint="v1.0 · build 042"          onClick={()=>showToast('BeatStudio v1.0')}/>
+        {/* Dark mode toggle */}
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 4px',borderTop:'1px dashed rgba(127,127,127,.25)',marginTop:4}}>
+          <div style={{width:28,height:28,border:'1.5px solid var(--ink-0)',borderRadius:3,background:'var(--paper-1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-0)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              {darkMode
+                ? <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>
+                : <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              }
+            </svg>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:12,letterSpacing:'.04em',color:'var(--ink-0)',textTransform:'uppercase'}}>
+              {darkMode ? 'Studio Mode' : 'Dark Mode'}
+            </div>
+            <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)',marginTop:2}}>
+              {darkMode ? 'Lights on' : 'Go dark'}
+            </div>
+          </div>
+          <PSwitch on={darkMode} onChange={()=>onToggleDark()} size="sm"/>
+        </div>
+      </Sheet>
+
+      {/* ── DECK HERO ── */}
+      <div style={{background:'var(--deck)',padding:'16px 20px 12px',position:'relative',overflow:'hidden',flexShrink:0}}>
+        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 50% 80%,rgba(217,58,28,.1) 0%,transparent 65%)',pointerEvents:'none'}}/>
+        <Grain/>
+
+        {/* Top bar */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,position:'relative',zIndex:3}}>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{width:7,height:7,borderRadius:'50%',background:'var(--spot)',animation:'pulse-dot 1.4s ease-in-out infinite'}}/>
+            <span style={{fontFamily:'var(--font-disp)',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'#F0EBDF'}}>BEATSTUDIO™</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <span style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.14em',color:'#C9C5BC'}}>DECK-01</span>
+            <div style={{width:6,height:6,borderRadius:'50%',background:recentSession?'#7EC37A':'var(--ink-2)',boxShadow:recentSession?'0 0 4px rgba(126,195,122,.8)':'none'}}/>
+          </div>
+        </div>
+
+        {/* Cassette window */}
+        <div style={{background:'#0E0D10',border:'2px solid #000',borderRadius:4,padding:'10px 12px',position:'relative',overflow:'hidden',boxShadow:'inset 0 4px 10px rgba(0,0,0,.7)',zIndex:3}}>
+          <div style={{position:'absolute',top:0,left:0,right:0,height:'30%',background:'linear-gradient(to bottom,rgba(255,255,255,.05),transparent)',pointerEvents:'none'}}/>
+          <div style={{width:'100%',height:80,background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:3,position:'relative',overflow:'hidden'}}>
+            <Grain/>
+            <div style={{position:'absolute',top:7,left:7,right:7,height:20,background:'var(--paper-1)',border:'1.5px solid var(--ink-0)',borderRadius:2,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 8px'}}>
+              <span style={{fontFamily:'var(--font-disp)',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--spot)'}}>{recentSession?`SIDE ${recentSession.beat.side}`:'SIDE —'}</span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:11,fontWeight:800,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,textAlign:'center',margin:'0 6px'}}>
+                {recentSession ? recentSession.beat.title : 'NO TAPE LOADED'}
+              </span>
+              <span style={{fontFamily:'var(--font-mono)',fontSize:8,color:'var(--ink-2)',flexShrink:0}}>{recentSession?`${recentSession.beat.bpm}BPM`:''}</span>
+            </div>
+            <div style={{position:'absolute',top:34,left:24,width:32,height:32,animation:'reel-spin 5s linear infinite'}}>
+              <TapeReel size={32} spinning={true} speed={5}/>
+            </div>
+            <div style={{position:'absolute',top:34,right:24,width:32,height:32,animation:'reel-spin 6.5s linear infinite'}}>
+              <TapeReel size={32} spinning={true} speed={6.5}/>
+            </div>
+            <div style={{position:'absolute',top:50,left:58,right:58,height:2,background:'var(--ink-0)'}}/>
+            <div style={{position:'absolute',bottom:6,left:'50%',transform:'translateX(-50%)',width:'55%',height:9,border:'1.5px solid var(--ink-0)',borderRadius:2,background:'var(--paper-1)',display:'flex',justifyContent:'space-around',alignItems:'center',padding:'0 6px'}}>
+              {[0,1,2,3,4,5].map(i=><div key={i} style={{width:3,height:3,borderRadius:'50%',background:'var(--ink-0)'}}/>)}
+            </div>
+          </div>
+        </div>
+
+        {/* Deck info strip */}
+        <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.14em',color:'#C9C5BC',position:'relative',zIndex:3}}>
+          {recentSession
+            ? <><span>{recentSession.beat.format} · 44.1kHz</span><span>{recentSession.beat.key}</span><span>{recentSession.beat.bpm} BPM</span><span>{fmtDur(recentSession.beat.duration)}</span></>
+            : <><span>——</span><span>——</span><span>—— BPM</span><span>—:——</span></>
+          }
+        </div>
+      </div>
+
+      {/* ── STATS STRIP ── */}
+      <div style={{background:'var(--paper-1)',borderBottom:'2px solid var(--ink-0)',padding:'6px 20px',display:'flex',justifyContent:'space-between',alignItems:'center',position:'relative',zIndex:3,flexShrink:0}}>
+        <span style={{fontFamily:'var(--font-disp)',fontSize:9,fontWeight:700,letterSpacing:'.18em',color:'var(--ink-2)'}}>{sessions.length} SESSION{sessions.length!==1?'S':''}</span>
+        <span style={{color:'var(--ink-3)'}}>·</span>
+        <span style={{fontFamily:'var(--font-disp)',fontSize:9,fontWeight:700,letterSpacing:'.18em',color:'var(--ink-2)'}}>{beats.length} BEATS</span>
+        <span style={{color:'var(--ink-3)'}}>·</span>
+        <span style={{fontFamily:'var(--font-disp)',fontSize:9,fontWeight:700,letterSpacing:'.18em',color:'var(--spot)'}}>{totalTakes} TAKES</span>
+      </div>
+
+      {/* ── MAIN CONTENT — no scroll, fixed layout ── */}
+      <div style={{flex:1,padding:'12px 20px 0',position:'relative',zIndex:3,overflow:'hidden',display:'flex',flexDirection:'column',gap:10}}>
+
+        {/* ══ SESSIONS CARD §01 ══ */}
+        <div className="section-card" style={{marginBottom:0,flex:'0 0 auto'}}>
+          <div className="section-card-header" onClick={onGoSessions} role="button" tabIndex={0}>
+            <div>
+              <div style={{fontFamily:'var(--font-disp)',fontSize:8,fontWeight:700,letterSpacing:'.24em',color:'var(--spot)'}}>§01</div>
+              <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:16,letterSpacing:'-.03em',lineHeight:1,marginTop:2}}>SESSIONS</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{background:'var(--spot)',color:'#F0EBDF',fontFamily:'var(--font-mono)',fontSize:9,fontWeight:800,borderRadius:2,padding:'3px 7px',border:'1.5px solid var(--ink-0)'}}>{sessions.length}</div>
+              <Icon name="next" size={16} color="var(--ink-0)"/>
+            </div>
+          </div>
+
+          {sessions.slice(0,2).map((s,i)=>(
+            <div key={s.id} className="session-row" onClick={()=>onOpenSession(s)}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:'var(--font-mono)',fontWeight:i===0?800:700,fontSize:12,letterSpacing:'-.01em',
+                  color:i===0?'var(--ink-0)':'var(--ink-1)',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {s.beat.title}
+                </div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)',marginTop:2}}>
+                  {s.takes.length} take{s.takes.length!==1?'s':''} · {s.beat.bpm} BPM · {s.createdAt}
+                  {s.takes.some(t=>t.favorite) && <span style={{color:'var(--spot)',marginLeft:6}}>★</span>}
+                </div>
+              </div>
+              {i===0 ? (
+                <button className="press" onClick={e=>{e.stopPropagation();onOpenSession(s)}}
+                  style={{background:'var(--spot)',color:'#F0EBDF',border:'2px solid var(--ink-0)',borderRadius:3,
+                    fontFamily:'var(--font-mono)',fontWeight:800,fontSize:10,letterSpacing:'.1em',
+                    padding:'5px 10px',boxShadow:'2px 2px 0 var(--ink-0)',flexShrink:0}}>
+                  ▸ OPEN
+                </button>
+              ) : (
+                <Icon name="next" size={14} color="var(--ink-2)"/>
+              )}
+            </div>
+          ))}
+
+          <div className="card-footer-btn" onClick={onNewSession} role="button" tabIndex={0}>
+            <div style={{width:22,height:22,borderRadius:'50%',border:'2px solid var(--ink-0)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Icon name="plus" size={11} color="var(--ink-0)" stroke={2.5}/>
+            </div>
+            <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:11,letterSpacing:'.06em',color:'var(--ink-0)'}}>NEW SESSION</span>
+            <div style={{flex:1}}/>
+            <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)'}}>pick a beat →</span>
+          </div>
+        </div>
+
+        {/* ══ BEATS CARD §02 ══ */}
+        <div className="section-card" style={{marginBottom:0,flex:'0 0 auto'}}>
+          <div className="section-card-header" onClick={onGoLibrary} role="button" tabIndex={0}>
+            <div>
+              <div style={{fontFamily:'var(--font-disp)',fontSize:8,fontWeight:700,letterSpacing:'.24em',color:'var(--ink-2)'}}>§02</div>
+              <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:16,letterSpacing:'-.03em',lineHeight:1,marginTop:2}}>BEATS ON FILE</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{background:'var(--ink-0)',color:'#F0EBDF',fontFamily:'var(--font-mono)',fontSize:9,fontWeight:800,borderRadius:2,padding:'3px 7px',border:'1.5px solid var(--ink-0)'}}>{beats.length}</div>
+              <Icon name="next" size={16} color="var(--ink-0)"/>
+            </div>
+          </div>
+
+          {beats.slice(0,2).map((b,i)=>{
+            const sideColor = b.stamp==='NEW'?'var(--spot)':b.stamp==='FAV'?'var(--ink-0)':'var(--ink-2)';
+            return (
+              <div key={b.id} className="beat-row-home" onClick={()=>onGoLibrary(b)}>
+                <div style={{width:26,height:26,background:sideColor,border:'2px solid var(--ink-0)',borderRadius:2,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  <span style={{fontFamily:'var(--font-disp)',fontSize:6,fontWeight:700,color:'#F0EBDF',letterSpacing:'.1em'}}>SIDE</span>
+                  <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:10,color:'#F0EBDF',lineHeight:1}}>{b.side}</span>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:'var(--font-mono)',fontWeight:i===0?800:700,fontSize:12,
+                    color:i===0?'var(--ink-0)':'var(--ink-1)',
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {b.title}
+                    {b.stamp && <span style={{marginLeft:8,fontSize:8,color:sideColor,border:`1.5px solid ${sideColor}`,padding:'1px 4px',letterSpacing:'.1em'}}>{b.stamp}</span>}
+                  </div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)',marginTop:1}}>
+                    {b.bpm} BPM · {b.key} · {b.format}
+                  </div>
+                </div>
+                <Icon name="next" size={14} color="var(--ink-2)"/>
+              </div>
+            );
+          })}
+
+          <div className="card-footer-btn" onClick={()=>setImportOpen(true)} role="button" tabIndex={0}>
+            <div style={{width:22,height:22,borderRadius:'50%',background:'var(--spot)',border:'2px solid var(--ink-0)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Icon name="upload" size={11} color="#F0EBDF" stroke={2.5}/>
+            </div>
+            <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:11,letterSpacing:'.06em',color:'var(--ink-0)'}}>LOAD NEW TAPE</span>
+            <div style={{flex:1}}/>
+            <span style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)'}}>mp3 · wav · m4a</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Import Sheet */}
+      <Sheet open={importOpen} onClose={()=>{setImportOpen(false);setUrl('')}} title="LOAD NEW TAPE">
+        <div style={{display:'flex',gap:4,background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,padding:3,marginBottom:14}}>
+          {['device','url','youtube','soundcloud'].map(t=>(
+            <button key={t} className={`import-tab${importTab===t?' active':''}`} onClick={()=>setImportTab(t)}>
+              {t.toUpperCase()}
+            </button>
+          ))}
+        </div>
+        {importTab==='device' ? (
+          <div>
+            <div style={{border:'2px dashed var(--ink-0)',borderRadius:3,padding:28,textAlign:'center',background:'var(--paper-1)'}}>
+              <div style={{width:44,height:44,borderRadius:'50%',background:'var(--spot)',border:'2px solid var(--ink-0)',margin:'0 auto 10px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <Icon name="upload" size={18} color="#F0EBDF" stroke={2.5}/>
+              </div>
+              <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13}}>DROP OR BROWSE</div>
+              <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',marginTop:4}}>mp3 · wav · aiff · m4a · ≤50mb</div>
+            </div>
+            <div style={{marginTop:12}}>
+              <PushBtn variant="ink" size="md" style={{width:'100%'}} onClick={doImport}>▸ Choose file</PushBtn>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',marginBottom:6}}>
+              {importTab==='youtube'?'YOUTUBE URL':importTab==='soundcloud'?'SOUNDCLOUD URL':'AUDIO URL'}
+            </div>
+            <input value={url} onChange={e=>setUrl(e.target.value)}
+              placeholder={importTab==='youtube'?'https://youtube.com/watch?v=…':importTab==='soundcloud'?'https://soundcloud.com/…':'https://…'}
+              style={{width:'100%',boxSizing:'border-box',background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'10px 12px',fontFamily:'JetBrains Mono',fontSize:12,color:'var(--ink-0)'}}/>
+            <div style={{marginTop:14}}>
+              <PushBtn variant="rec" size="md" style={{width:'100%'}} onClick={doImport} disabled={!url}>▸ Fetch &amp; load</PushBtn>
+            </div>
+          </div>
+        )}
+      </Sheet>
+    </div>
+  );
+};
+
+
+// ═══════════════════════════════════════════════
+// SCREEN 1 — LIBRARY  (inline search, no hamburger)
+// ═══════════════════════════════════════════════
+const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, showToast, darkMode, onToggleDark }) => {
+  const [moreOpen,    setMoreOpen]   = useState(false);
+  const [importOpen,  setImportOpen] = useState(false);
+  const [searchActive,setSearchActive]=useState(false);
+  const [query,       setQuery]      = useState('');
+  const [importTab,   setImportTab]  = useState('device');
+  const [url,         setUrl]        = useState('');
+  const [sortMode,    setSortMode]   = useState('DATE');
+  const [favOnly,     setFavOnly]    = useState(false);
+  const searchRef = useRef();
+
+  const SORT_CYCLE = ['DATE','TITLE','BPM'];
+
+  const filtered = beats
+    .filter(b => favOnly ? b.stamp==='FAV' : true)
+    .filter(b => query ? b.title.toLowerCase().includes(query.toLowerCase()) : true)
+    .sort((a,b)=>{
+      if(sortMode==='TITLE') return a.title.localeCompare(b.title);
+      if(sortMode==='BPM')   return a.bpm-b.bpm;
+      return 0;
+    });
+
+  const openSearch = () => {
+    setSearchActive(true);
+    setTimeout(()=>searchRef.current&&searchRef.current.focus(), 60);
+  };
+  const closeSearch = () => { setSearchActive(false); setQuery(''); };
+
+  const doImport = () => {
+    setImportOpen(false); setUrl(''); onAddBeat();
+    showToast('Beat loaded to library');
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <Grain/>
+
+      {/* ── FIXED HEADER ── */}
+      <div className="fixed-header" style={{padding:'16px 20px 0',flexShrink:0}}>
+
+        {/* Header row — collapses into search bar when active */}
+        {searchActive ? (
+          /* ── SEARCH MODE ── */
+          <div style={{display:'flex',alignItems:'center',gap:8,paddingBottom:12,borderBottom:'1.5px solid var(--ink-0)',marginBottom:16,animation:'search-expand 150ms var(--ease) both'}}>
+            <Icon name="search" size={15} color="var(--ink-2)"/>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={e=>setQuery(e.target.value)}
+              placeholder="Find a beat…"
+              style={{
+                all:'unset',flex:1,
+                fontFamily:'JetBrains Mono',fontWeight:700,fontSize:14,
+                color:'var(--ink-0)',
+              }}
+            />
+            {query
+              ? <button style={{all:'unset',cursor:'pointer',padding:4}} onClick={()=>setQuery('')}>
+                  <Icon name="close" size={14} color="var(--ink-2)"/>
+                </button>
+              : null
+            }
+            <button style={{all:'unset',cursor:'pointer',fontFamily:'Space Mono',fontSize:10,fontWeight:700,letterSpacing:'.14em',color:'var(--ink-2)',paddingLeft:6}} onClick={closeSearch}>
+              CANCEL
+            </button>
+          </div>
+        ) : (
+          /* ── NORMAL HEADER ── */
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',paddingBottom:12,borderBottom:'1.5px solid var(--ink-0)',marginBottom:16}}>
+            {/* left — empty slot for consistency (root tab screen) */}
+            <div style={{width:60}}/>
+            <span style={{fontFamily:'var(--font-disp)',fontSize:10,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-0)'}}>CAT. 001</span>
+            {/* right — search + add */}
+            <div style={{width:60,display:'flex',justifyContent:'flex-end',alignItems:'center',gap:4}}>
+              <button className="icon-btn" onClick={openSearch} title="Search">
+                <Icon name="search" size={18} color="var(--ink-0)"/>
+              </button>
+              <button className="icon-btn" onClick={()=>setMoreOpen(true)} title="More options">
+                <Icon name="more" size={18} color="var(--ink-0)"/>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ·· More / options sheet (replaces hamburger) ·· */}
+        <Sheet open={moreOpen} onClose={()=>setMoreOpen(false)} title="LIBRARY OPTIONS">
+          <MenuRow icon="upload" label="Import Beat"         hint="Device, URL, or streaming"   onClick={()=>{setMoreOpen(false);setImportOpen(true)}}/>
+          <MenuRow icon="star"   label="Favorites only"      hint={favOnly?'Showing favorites':'Show all beats'}
+            onClick={()=>{setMoreOpen(false);setFavOnly(f=>!f)}}
+            right={<span style={{fontSize:10,fontWeight:700,fontFamily:'var(--font-mono)',color:favOnly?'var(--spot)':'var(--ink-2)'}}>{favOnly?'ON':'OFF'}</span>}/>
+          <MenuRow icon="share"  label="Export all sessions" hint="Zip of every mix"            onClick={()=>showToast('Export all — coming soon')}/>
+          <MenuRow icon="more"   label="About BeatStudio"    hint="v1.0 · build 042"            onClick={()=>showToast('BeatStudio v1.0')}/>
+          <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 4px',borderTop:'1px dashed rgba(127,127,127,.25)',marginTop:4}}>
+            <div style={{width:28,height:28,border:'1.5px solid var(--ink-0)',borderRadius:3,background:'var(--paper-1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-0)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                {darkMode
+                  ? <><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>
+                  : <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                }
+              </svg>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:12,letterSpacing:'.04em',color:'var(--ink-0)',textTransform:'uppercase'}}>
+                {darkMode ? 'Studio Mode' : 'Dark Mode'}
+              </div>
+              <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)',marginTop:2}}>
+                {darkMode ? 'Lights on' : 'Go dark'}
+              </div>
+            </div>
+            <PSwitch on={darkMode} onChange={()=>onToggleDark()} size="sm"/>
+          </div>
+        </Sheet>
+
+        {/* Import Sheet */}
+        <Sheet open={importOpen} onClose={()=>{setImportOpen(false);setUrl('')}} title="LOAD NEW TAPE">
+          <div style={{display:'flex',gap:4,background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,padding:3,marginBottom:14}}>
+            {['device','url','youtube','soundcloud'].map(t=>(
+              <button key={t} className={`import-tab${importTab===t?' active':''}`} onClick={()=>setImportTab(t)}>
+                {t.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          {importTab==='device' ? (
+            <div>
+              <div style={{border:'2px dashed var(--ink-0)',borderRadius:3,padding:28,textAlign:'center',background:'var(--paper-1)'}}>
+                <div style={{width:44,height:44,borderRadius:'50%',background:'var(--spot)',border:'2px solid var(--ink-0)',margin:'0 auto 10px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Icon name="upload" size={18} color="#F0EBDF" stroke={2.5}/>
+                </div>
+                <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13}}>DROP OR BROWSE</div>
+                <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',marginTop:4}}>mp3 · wav · aiff · m4a · ≤50mb</div>
+              </div>
+              <div style={{marginTop:12}}>
+                <PushBtn variant="ink" size="md" style={{width:'100%'}} onClick={doImport}>▸ Choose file</PushBtn>
+              </div>
+            </div>
+          ):(
+            <div>
+              <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',marginBottom:6}}>
+                {importTab==='youtube'?'YOUTUBE URL':importTab==='soundcloud'?'SOUNDCLOUD URL':'AUDIO URL'}
+              </div>
+              <input value={url} onChange={e=>setUrl(e.target.value)}
+                placeholder={importTab==='youtube'?'https://youtube.com/watch?v=…':importTab==='soundcloud'?'https://soundcloud.com/…':'https://…'}
+                style={{width:'100%',boxSizing:'border-box',background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'10px 12px',fontFamily:'JetBrains Mono',fontSize:12,color:'var(--ink-0)'}}/>
+              <div style={{marginTop:14}}>
+                <PushBtn variant="rec" size="md" style={{width:'100%'}} onClick={doImport} disabled={!url}>▸ Fetch &amp; load</PushBtn>
+              </div>
+            </div>
+          )}
+        </Sheet>
+
+        {/* Editorial title — hidden while searching */}
+        {!searchActive && (
+          <div style={{marginBottom:14,position:'relative',zIndex:3}}>
+            <div style={{fontFamily:'Space Mono,monospace',fontSize:10,fontWeight:700,letterSpacing:'.24em',color:'var(--spot)'}}>MY LIBRARY / VOL.1</div>
+            <h1 style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:34,lineHeight:.95,margin:'6px 0 0',letterSpacing:'-.04em',color:'var(--ink-0)'}}>
+              BEATS<br/><span style={{color:'var(--spot)'}}>ON FILE</span>
+            </h1>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:12,fontFamily:'JetBrains Mono',fontSize:11,fontWeight:500,color:'var(--ink-2)',borderTop:'1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)',paddingTop:8}}>
+              <span>TOTAL · {beats.length}</span>
+              <button style={{all:'unset',cursor:'pointer',fontWeight:700,color:'var(--ink-1)'}}
+                onClick={()=>setSortMode(m=>{const i=SORT_CYCLE.indexOf(m);return SORT_CYCLE[(i+1)%SORT_CYCLE.length]})}>
+                SORTED · {sortMode} ▾
+              </button>
+              <span style={{color:favOnly?'var(--spot)':'var(--ink-2)'}}>{favOnly?'★ FAV':'ALL'}</span>
+            </div>
+          </div>
+        )}
+
+        {/* LOAD NEW TAPE — hidden while searching */}
+        {!searchActive && (
+          <button onClick={()=>setImportOpen(true)} style={{all:'unset',width:'100%',boxSizing:'border-box',display:'flex',alignItems:'center',gap:12,cursor:'pointer',padding:10,background:'var(--paper-1)',border:'2px dashed var(--ink-0)',borderRadius:3,marginBottom:12}}>
+            <div style={{width:30,height:30,borderRadius:'50%',background:'var(--spot)',display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid var(--ink-0)'}}>
+              <Icon name="plus" size={14} color="#F0EBDF" stroke={2.5}/>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:12,letterSpacing:'.04em',color:'var(--ink-0)'}}>LOAD NEW TAPE</div>
+              <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',marginTop:2}}>mp3 · wav · aiff · m4a · ≤50mb</div>
+            </div>
+          </button>
+        )}
+
+        {/* Search result count pill — shown while searching */}
+        {searchActive && (
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,marginTop:-6}}>
+            <span style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>
+              {query
+                ? `${filtered.length} OF ${beats.length} MATCH${filtered.length!==1?'ES':''}`
+                : `${beats.length} BEAT${beats.length!==1?'S':''}`
+              }
+            </span>
+            {favOnly && <span style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.14em',color:'var(--spot)'}}>★ FAV</span>}
+          </div>
+        )}
+      </div>{/* end fixed-header */}
+
+      {/* ── BEAT LIST — only this scrolls ── */}
+      <div className="scroll-body" style={{padding:'0 20px 12px'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:10,paddingTop:4}}>
+          {!searchActive && beats.length===0 && !favOnly && (
+            <div style={{background:'var(--paper-1)',border:'2px dashed var(--ink-0)',borderRadius:3,padding:32,textAlign:'center'}}>
+              <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13,color:'var(--ink-0)',marginBottom:6}}>No beats yet.</div>
+              <div style={{fontFamily:'JetBrains Mono',fontSize:11,color:'var(--ink-2)'}}>Import one to start.</div>
+            </div>
+          )}
+          {favOnly && filtered.length===0 && (
+            <div style={{textAlign:'center',padding:24,fontFamily:'var(--font-mono)',fontSize:12,color:'var(--ink-2)'}}>No favorites yet.</div>
+          )}
+          {searchActive && query && filtered.length===0 && (
+            <div style={{textAlign:'center',padding:36,fontFamily:'var(--font-mono)',fontSize:12,color:'var(--ink-2)'}}>
+              <div style={{fontSize:28,marginBottom:8}}>—</div>
+              No beats match "{query}"
+            </div>
+          )}
+          {filtered.map(b=>(
+            <div key={b.id} style={{position:'relative'}}>
+              {searchActive && query && (
+                /* Highlight matched portion */
+                <div style={{position:'absolute',top:-2,left:-2,right:-2,bottom:-2,border:'2px solid var(--spot)',borderRadius:5,pointerEvents:'none',opacity:.35}}/>
+              )}
+              <TapeLabel
+                title={b.title}
+                meta={`${b.bpm} BPM · ${b.key} · ${fmtDur(b.duration)} · ${b.format}`}
+                side={b.side} stamp={b.stamp}
+                color={b.stamp==='NEW'?'var(--spot)':b.stamp==='FAV'?'var(--ink-0)':'var(--ink-2)'}
+                onClick={()=>{ if(searchActive) closeSearch(); onOpenBeat(b); }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 2 — BEAT DETAIL
+// ═══════════════════════════════════════════════
+const BeatDetailScreen = ({ beat, onBack, onStart, showToast }) => {
+  const [playing,  setPlaying]  = useState(false);
+  const [progress, setProgress] = useState(0.18);
+  const [doorOpen, setDoorOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [loop,     setLoop]     = useState(false);
+  const intRef = useRef();
+
+  useEffect(()=>{
+    const t=setTimeout(()=>setDoorOpen(true),200);
+    return()=>clearTimeout(t);
+  },[]);
+
+  useEffect(()=>{
+    if(playing){
+      const t0=Date.now(), start=progress;
+      intRef.current=setInterval(()=>{
+        const elapsed=(Date.now()-t0)/1000;
+        const p=start+elapsed/beat.duration;
+        if(p>=1){
+          if(loop){setProgress(0);}
+          else{setPlaying(false);setProgress(0);}
+        } else { setProgress(p); }
+      },60);
+    } else { clearInterval(intRef.current); }
+    return()=>clearInterval(intRef.current);
+  },[playing]);
+
+  const handleScrub = p => { setProgress(p); };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <Grain/>
+      <div className="fixed-header" style={{padding:'16px 20px 0'}}>
+        <ScreenHeader
+          left={<IconBtn name="back" onClick={onBack} title="Back"/>}
+          title="LOADED"
+          right={
+            <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <button className="icon-btn" onClick={()=>setLoop(l=>!l)} title="Loop" style={{opacity:loop?1:.45}}>
+                <Icon name="loop" size={16} color={loop?'var(--spot)':'var(--ink-0)'}/>
+              </button>
+              <IconBtn name="more" onClick={()=>setMoreOpen(true)} title="Options"/>
+            </div>
+          }
+        />
+        <Sheet open={moreOpen} onClose={()=>setMoreOpen(false)} title="BEAT OPTIONS">
+          <MenuRow icon="star"    label="Add to Favorites"   onClick={()=>{setMoreOpen(false);showToast('Added to favorites')}}/>
+          <MenuRow icon="rename"  label="Rename Beat"         hint={beat.title}                onClick={()=>{setMoreOpen(false);showToast('Rename — coming soon')}}/>
+          <MenuRow icon="share"   label="Share Beat File"     onClick={()=>{setMoreOpen(false);showToast('Share — coming soon')}}/>
+          <MenuRow icon="cassette"label="View Sessions"       hint="0 recorded"/>
+          <MenuRow icon="trash"   label="Remove from Library" danger onClick={()=>{setMoreOpen(false);onBack();showToast('Beat removed')}}/>
+        </Sheet>
+      </div>
+
+      <div className="scroll-body" style={{padding:'0 20px 16px'}}>
+        {/* Deck chassis */}
+        <div style={{position:'relative',zIndex:3,background:'var(--deck-grey)',border:'2px solid var(--ink-0)',borderRadius:6,padding:14,boxShadow:'4px 4px 0 var(--ink-0)',marginTop:4}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:'var(--spot)',boxShadow:'0 0 4px rgba(217,58,28,.8)'}}/>
+              <span style={{fontFamily:'Space Mono,monospace',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'#F0EBDF'}}>TAPE IN</span>
+            </div>
+            <span style={{fontFamily:'JetBrains Mono',fontSize:10,fontWeight:700,letterSpacing:'.14em',color:'#C9C5BC'}}>DECK-01</span>
+          </div>
+          <div style={{background:'#0E0D10',borderRadius:4,padding:18,border:'2px solid #000',boxShadow:'inset 0 4px 8px rgba(0,0,0,.6)',position:'relative',overflow:'hidden',
+            animation:doorOpen?'door-open 420ms var(--ease-io) both':'none',
+            transformOrigin:'top',
+          }}>
+            <div style={{position:'absolute',top:0,left:0,right:0,height:'30%',background:'linear-gradient(to bottom,rgba(255,255,255,.06),transparent)',pointerEvents:'none'}}/>
+            <Cassette width={280} spinning={playing} title={beat.title} side={beat.side} bpm={beat.bpm}/>
+          </div>
+          <div style={{marginTop:14,display:'flex',justifyContent:'space-between',fontFamily:'JetBrains Mono',fontSize:10,fontWeight:700,letterSpacing:'.14em',color:'#C9C5BC'}}>
+            <span>{beat.format}</span><span>{beat.key}</span><span>{beat.bpm} BPM</span><span>{fmtDur(beat.duration)}</span>
+          </div>
+        </div>
+
+        {/* Preview transport */}
+        <div style={{marginTop:20,position:'relative',zIndex:3}}>
+          <div style={{fontFamily:'Space Mono,monospace',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--ink-2)',marginBottom:8}}>PREVIEW ▸</div>
+          <Waveform progress={progress} seed={beat.bpm} height={44} onScrub={handleScrub}/>
+          <div style={{display:'flex',justifyContent:'space-between',fontFamily:'JetBrains Mono',fontSize:10,fontWeight:500,color:'var(--ink-2)',marginTop:6,fontVariantNumeric:'tabular-nums'}}>
+            <span>{fmtTC(progress*beat.duration*1000)}</span>
+            <span style={{color:loop?'var(--spot)':'var(--ink-2)'}}>{loop?'⟳ LOOP':''}</span>
+            <span>-{fmtTC((1-progress)*beat.duration*1000)}</span>
+          </div>
+          <div style={{display:'flex',gap:12,justifyContent:'center',marginTop:14}}>
+            <TportBtn icon="rewind"  size={40} label="REW"  onClick={()=>setProgress(Math.max(0,progress-.1))}/>
+            <TportBtn icon={playing?'pause':'play'} size={56} active label={playing?'PAUSE':'PLAY'} onClick={()=>setPlaying(p=>!p)}/>
+            <TportBtn icon="forward" size={40} label="FWD"  onClick={()=>setProgress(Math.min(1,progress+.1))}/>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div style={{marginTop:24,position:'relative',zIndex:3}}>
+          <PushBtn variant="rec" size="lg" onClick={()=>{setPlaying(false);onStart(beat)}} style={{width:'100%'}}>
+            ● Record over this
+          </PushBtn>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 3 — RECORD (fixed layout, nav stays visible)
+// ═══════════════════════════════════════════════
+const RecordScreen = ({ beat, takes, onBack, onFinishTake, showToast, onRecordingChange, onCountingChange, recCtrlRef }) => {
+  const [recording,    setRecording]    = useState(false);
+  const [elapsed,      setElapsed]      = useState(0);
+  const [level,        setLevel]        = useState(0.22);
+  const [inputGain,    setInputGain]    = useState(65);
+  const [moreOpen,     setMoreOpen]     = useState(false);
+  const [metronome,    setMetronome]    = useState(false);
+  const [countIn,      setCountIn]      = useState(true);
+  const [counting,     setCounting]     = useState(0);
+  const [clip,         setClip]         = useState(false);
+  const [beatProgress, setBeatProgress] = useState(0);
+  const [beatPlaying,  setBeatPlaying]  = useState(false);
+  const intRef   = useRef();
+  const clipRef  = useRef();
+  const beatRef  = useRef();
+  const t0Ref    = useRef(0);
+
+  useEffect(()=>{
+    if(recording){
+      t0Ref.current=Date.now()-elapsed;
+      intRef.current=setInterval(()=>{
+        setElapsed(Date.now()-t0Ref.current);
+        const l=0.35+Math.random()*.5;
+        setLevel(l);
+        setBeatProgress(p=>{ const n=p+(60/(beat.duration*1000)/16.67); return n>=1?0:n; });
+        if(l>0.9){setClip(true);clearTimeout(clipRef.current);clipRef.current=setTimeout(()=>setClip(false),400);}
+      },60);
+    } else {
+      clearInterval(intRef.current);
+      intRef.current=setInterval(()=>setLevel(.12+Math.random()*.08),220);
+    }
+    return()=>{clearInterval(intRef.current);clearTimeout(clipRef.current);}
+  },[recording]);
+
+  useEffect(()=>{
+    if(beatPlaying && !recording){
+      const dur = beat.duration*1000;
+      const start = Date.now() - beatProgress*dur;
+      beatRef.current=setInterval(()=>{
+        const p=(Date.now()-start)/dur;
+        if(p>=1){setBeatPlaying(false);setBeatProgress(0);}
+        else setBeatProgress(p);
+      },60);
+    } else { clearInterval(beatRef.current); }
+    return()=>clearInterval(beatRef.current);
+  },[beatPlaying,recording]);
+
+  const doStartRec = () => {
+    if(countIn){
+      const beat_ms = Math.round(60000/beat.bpm);
+      let c=4; setCounting(c);
+      onCountingChange&&onCountingChange(true);
+      const tick=()=>{c--;if(c>0){setCounting(c);setTimeout(tick,beat_ms);}else{setCounting(0);onCountingChange&&onCountingChange(false);setRecording(true);onRecordingChange&&onRecordingChange(true);}};
+      setTimeout(tick,beat_ms);
+    } else {
+      setRecording(true);
+      onRecordingChange&&onRecordingChange(true);
+    }
+  };
+
+  const doStop = () => {
+    if(!recording) return;
+    clearInterval(intRef.current);
+    setRecording(false);
+    onRecordingChange&&onRecordingChange(false);
+    const dur = elapsed;
+    setElapsed(0);
+    onFinishTake({ durationMs: dur||142000 });
+    showToast('Take saved');
+  };
+
+  // Register controls on ref so TabBar can call them
+  React.useEffect(()=>{
+    if(recCtrlRef){ recCtrlRef.current = { start: doStartRec, stop: doStop, counting }; }
+  });
+
+  const nextTake = takes.length+1;
+  const tc = fmtTC(elapsed);
+
+  return (
+    // The screen has: header (fixed), scrollable content, transport (fixed above nav)
+    // phone-screen already has bottom:0 since record screen has no tab bar
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative',overflow:'hidden'}}>
+      <Grain/>
+
+      {/* Count-in overlay */}
+      {counting>0 && (
+        <div style={{position:'absolute',inset:0,zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(240,235,223,.85)',backdropFilter:'blur(2px)'}}>
+          <div key={counting} style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:120,color:'var(--spot)',lineHeight:1,animation:'count-pop 400ms var(--ease) both',textShadow:'4px 4px 0 var(--ink-0)'}}>{counting}</div>
+        </div>
+      )}
+
+      {/* Fixed header */}
+      <div style={{flexShrink:0,padding:'0 20px',background:'var(--paper-0)',position:'relative',zIndex:5}}>
+        <ScreenHeader
+          left={<IconBtn name="back" onClick={()=>{if(!recording)onBack()}} title="Back" style={{opacity:recording?.3:1,cursor:recording?'not-allowed':'pointer'}}/>}
+          title={recording ? `● TAKE ${String(nextTake).padStart(2,'0')}` : 'READY'}
+          right={<IconBtn name="more" onClick={()=>setMoreOpen(true)} title="Options"/>}
+        />
+      </div>
+
+      <Sheet open={moreOpen} onClose={()=>setMoreOpen(false)} title="RECORD OPTIONS">
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 4px',borderBottom:'1px dashed color-mix(in srgb,var(--ink-0) 25%,transparent)'}}>
+          <div style={{width:28,height:28,border:'1.5px solid var(--ink-0)',borderRadius:3,background:'var(--paper-1)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Icon name="cassette" size={14}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:12,letterSpacing:'.04em',textTransform:'uppercase'}}>Metronome</div>
+            <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',marginTop:2}}>{beat.bpm} BPM click</div>
+          </div>
+          <PSwitch on={metronome} onChange={setMetronome} size="sm"/>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 4px',borderBottom:'1px dashed color-mix(in srgb,var(--ink-0) 25%,transparent)'}}>
+          <div style={{width:28,height:28,border:'1.5px solid var(--ink-0)',borderRadius:3,background:'var(--paper-1)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <Icon name="play" size={12}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:12,letterSpacing:'.04em',textTransform:'uppercase'}}>4-Beat Count-In</div>
+            <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',marginTop:2}}>One bar before record</div>
+          </div>
+          <PSwitch on={countIn} onChange={setCountIn} size="sm"/>
+        </div>
+        <MenuRow icon="mic"     label="Input Device"            hint="Built-in mic"/>
+        <MenuRow icon="cassette"label="Monitor While Recording" hint="Off · avoids feedback"/>
+        {recording && <MenuRow icon="trash" label="Discard Current Take" danger onClick={()=>{setRecording(false);setElapsed(0);setMoreOpen(false);showToast('Take discarded')}}/>}
+      </Sheet>
+
+      {/* Scrollable body */}
+      <div className="scroll-body" style={{padding:'4px 20px 8px'}}>
+
+        {/* Beat strip */}
+        <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'8px 10px',marginBottom:8,position:'relative',zIndex:3}}>
+          <div style={{width:24,height:24,background:'var(--spot)',border:'1.5px solid var(--ink-0)',borderRadius:2,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,color:'#F0EBDF'}}>{beat.side}</span>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:12,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{beat.title}</div>
+            <div style={{fontFamily:'JetBrains Mono',fontSize:9,color:'var(--ink-2)',letterSpacing:'.1em'}}>{beat.bpm} BPM · {beat.key}</div>
+          </div>
+          {takes.length>0 && <Stamp rotate={-2}>{takes.length} TK</Stamp>}
+        </div>
+
+        {/* ── BEAT waveform scrubber (same style as vocal) ── */}
+        <div style={{marginBottom:10,position:'relative',zIndex:3}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+            <span style={{fontFamily:'Space Mono',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>
+              BEAT ▸ {beatPlaying ? <span style={{color:'var(--spot)'}}>PLAYING</span> : recording ? <span style={{color:'var(--spot)',animation:'blink 1s infinite'}}>ROLLING</span> : 'SCRUB'}
+            </span>
+            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+              <span style={{fontFamily:'JetBrains Mono',fontSize:9,fontWeight:700,color:'var(--ink-2)',fontVariantNumeric:'tabular-nums'}}>{fmtTC(beatProgress*beat.duration*1000)}</span>
+              <button onClick={()=>!recording&&setBeatPlaying(p=>!p)} style={{all:'unset',cursor:recording?'default':'pointer',width:20,height:20,borderRadius:'50%',background:'var(--paper-1)',border:'1.5px solid var(--ink-0)',display:'flex',alignItems:'center',justifyContent:'center',opacity:recording?.5:1}}>
+                <Icon name={beatPlaying?'pause':'play'} size={10} color="var(--ink-0)"/>
+              </button>
+            </div>
+          </div>
+          <Waveform progress={beatProgress} seed={beat.bpm*2} height={38} bars={60}
+            color="var(--spot)" restColor="var(--ink-3)"
+            onScrub={!recording ? p=>{setBeatProgress(p);setBeatPlaying(false);} : null}/>
+          <div style={{display:'flex',justifyContent:'space-between',fontFamily:'JetBrains Mono',fontSize:9,fontWeight:500,color:'var(--ink-2)',marginTop:3,fontVariantNumeric:'tabular-nums'}}>
+            <span>{fmtTC(beatProgress*beat.duration*1000)}</span>
+            <span>-{fmtTC((1-beatProgress)*beat.duration*1000)}</span>
+          </div>
+        </div>
+
+        {/* VU meter */}
+        <div style={{display:'flex',justifyContent:'center',marginBottom:8,position:'relative',zIndex:3}}>
+          <VUMeter level={level} width={296}/>
+        </div>
+
+        {/* LED timecode */}
+        <div style={{display:'flex',justifyContent:'center',marginBottom:8,position:'relative',zIndex:3}}>
+          <SegDisplay text={tc} size={34}/>
+        </div>
+
+        {/* Peak bar + CLIP indicator */}
+        <div style={{marginBottom:6,position:'relative',zIndex:3}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+            <PeakMeter level={level}/>
+            {clip && <span style={{fontFamily:'Space Mono',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--spot)',animation:'clip-flash 200ms ease 3'}}>CLIP</span>}
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontFamily:'Space Mono,monospace',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>
+            <span>-24dB</span><span>PEAK</span><span style={{color:'var(--spot)'}}>0dB</span>
+          </div>
+        </div>
+
+        {/* ── VOCAL spooling waveform ── */}
+        <div style={{marginTop:8,marginBottom:10,position:'relative',zIndex:3}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+            <span style={{fontFamily:'Space Mono',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>
+              VOCAL ▸ {recording?(<span style={{color:'var(--spot)',animation:'blink 1s infinite'}}>● ROLLING</span>):'STOP'}
+            </span>
+          </div>
+          <SpoolWaveform elapsed={recording?elapsed:0} seed={beat.bpm}/>
+        </div>
+
+        {/* Input gain */}
+        <div style={{marginBottom:8,position:'relative',zIndex:3}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+            <span style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>MIC ▸ GAIN</span>
+            <span style={{fontFamily:'JetBrains Mono',fontSize:11,fontWeight:800,color:'var(--ink-0)',fontVariantNumeric:'tabular-nums'}}>{inputGain}</span>
+          </div>
+          <PSlider value={inputGain} onChange={setInputGain}/>
+        </div>
+      </div>{/* end scroll-body */}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 4 — SESSION
+// ═══════════════════════════════════════════════
+const SessionScreen = ({ beat, takes, onBack, onNewTake, onExport, onUpdateTake, onDeleteTake, showToast, sessionName, onRenameSession }) => {
+  const [beatVol,      setBeatVol]     = useState(70);
+  const [beatProgress, setBeatProgress] = useState(0);
+  const [beatPlaying,  setBeatPlaying]  = useState(false);
+  const [moreOpen,     setMoreOpen]     = useState(false);
+  const [editingId,    setEditingId]    = useState(null);
+  const [editLabel,    setEditLabel]    = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [previewId,    setPreviewId]    = useState(null);
+  const [previewProg,  setPreviewProg]  = useState(0);
+  const [editingName,  setEditingName]  = useState(false);
+  const [nameInput,    setNameInput]    = useState(sessionName);
+  const prevRef  = useRef();
+  const beatRef  = useRef();
+
+  // Beat playback simulation
+  useEffect(()=>{
+    if(beatPlaying){
+      const dur = beat.duration*1000;
+      const start = Date.now() - beatProgress*dur;
+      beatRef.current = setInterval(()=>{
+        const p = (Date.now()-start)/dur;
+        if(p>=1){ setBeatPlaying(false); setBeatProgress(0); }
+        else setBeatProgress(p);
+      },60);
+    } else { clearInterval(beatRef.current); }
+    return()=>clearInterval(beatRef.current);
+  },[beatPlaying]);
+
+  useEffect(()=>{
+    if(previewId){
+      prevRef.current=setInterval(()=>setPreviewProg(p=>p>=1?(clearInterval(prevRef.current),setPreviewId(null),0):p+0.008),60);
+    } else {
+      clearInterval(prevRef.current);setPreviewProg(0);
+    }
+    return()=>clearInterval(prevRef.current);
+  },[previewId]);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <Grain/>
+
+      {/* Fixed header */}
+      <div className="fixed-header" style={{padding:'16px 20px 0',flexShrink:0}}>
+        <ScreenHeader
+          left={<IconBtn name="back" onClick={onBack} title="Back"/>}
+          title={
+            editingName
+              ? <input autoFocus value={nameInput} onChange={e=>setNameInput(e.target.value)}
+                  onBlur={()=>{setEditingName(false);onRenameSession(nameInput)}}
+                  onKeyDown={e=>e.key==='Enter'&&(setEditingName(false),onRenameSession(nameInput))}
+                  style={{all:'unset',fontFamily:'Space Mono',fontSize:10,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-0)',borderBottom:'2px solid var(--spot)',minWidth:120,textAlign:'center'}}/>
+              : <span style={{cursor:'pointer'}} onClick={()=>{setEditingName(true);setNameInput(sessionName)}}>{sessionName}</span>
+          }
+          right={
+            <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <button onClick={onNewTake} style={{all:'unset',cursor:'pointer',display:'flex',alignItems:'center',gap:3,
+                fontFamily:'var(--font-disp)',fontSize:9,fontWeight:700,letterSpacing:'.18em',color:'var(--spot)'}}>
+                <Icon name="plus" size={13} color="var(--spot)" stroke={2.5}/>NEW
+              </button>
+              <IconBtn name="more" onClick={()=>setMoreOpen(true)} title="Session options"/>
+            </div>
+          }
+        />
+
+        <Sheet open={moreOpen} onClose={()=>setMoreOpen(false)} title="SESSION OPTIONS">
+          <MenuRow icon="rename"  label="Rename Session"    hint={sessionName}           onClick={()=>{setMoreOpen(false);setEditingName(true);setNameInput(sessionName)}}/>
+          <MenuRow icon="upload"  label="Export Mix"        hint="MP3 or WAV"            onClick={()=>{setMoreOpen(false);onExport()}}/>
+          <MenuRow icon="share"   label="Share Project File"hint="All takes + beat"      onClick={()=>{setMoreOpen(false);showToast('Share — coming soon')}}/>
+          <MenuRow icon="copy"    label="Duplicate Session" onClick={()=>{setMoreOpen(false);showToast('Session duplicated')}}/>
+          <MenuRow icon="trash"   label="Delete Session"    danger                       onClick={()=>{setMoreOpen(false);onBack();showToast('Session deleted')}}/>
+        </Sheet>
+
+        {/* Session beat card with waveform scrubber */}
+        <div style={{background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'12px 14px',marginBottom:10,boxShadow:'3px 3px 0 var(--ink-0)',position:'relative',zIndex:3}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--spot)'}}>RECORDING ON ▸</div>
+              <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:15,letterSpacing:'-.02em',marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:220}}>{beat.title}</div>
+              <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',marginTop:3,letterSpacing:'.1em'}}>
+                {beat.bpm} BPM · {beat.key} · {takes.filter(t=>t.enabled).length}/{takes.length} ACTIVE
+              </div>
+            </div>
+            <Stamp rotate={-2}>TK {String(takes.length).padStart(2,'0')}</Stamp>
+          </div>
+
+          {/* Beat waveform with scrub + play */}
+          <div style={{marginBottom:10}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+              <span style={{fontFamily:'Space Mono',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>
+                BEAT ▸ {beatPlaying ? <span style={{color:'var(--spot)'}}>PLAYING</span> : 'SCRUB'}
+              </span>
+              <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                <span style={{fontFamily:'JetBrains Mono',fontSize:9,fontWeight:700,color:'var(--ink-2)',fontVariantNumeric:'tabular-nums'}}>{fmtTC(beatProgress*beat.duration*1000)}</span>
+                <button onClick={()=>setBeatPlaying(p=>!p)} style={{all:'unset',cursor:'pointer',width:20,height:20,borderRadius:'50%',background:'var(--paper-1)',border:'1.5px solid var(--ink-0)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <Icon name={beatPlaying?'pause':'play'} size={10} color="var(--ink-0)"/>
+                </button>
+              </div>
+            </div>
+            <Waveform
+              progress={beatProgress}
+              seed={beat.bpm*3}
+              height={34}
+              bars={60}
+              color="var(--spot)"
+              restColor="var(--ink-3)"
+              onScrub={p=>{setBeatProgress(p);setBeatPlaying(false);}}
+            />
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:'JetBrains Mono',fontSize:9,fontWeight:500,color:'var(--ink-2)',marginTop:3,fontVariantNumeric:'tabular-nums'}}>
+              <span>{fmtTC(beatProgress*beat.duration*1000)}</span>
+              <span>-{fmtTC((1-beatProgress)*beat.duration*1000)}</span>
+            </div>
+          </div>
+
+          {/* Beat volume */}
+          <div style={{display:'flex',alignItems:'center',gap:10,borderTop:'1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)',paddingTop:10}}>
+            <span style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',width:40}}>BEAT</span>
+            <PSlider value={beatVol} onChange={setBeatVol}/>
+            <span style={{fontFamily:'JetBrains Mono',fontSize:11,fontWeight:800,width:26,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{beatVol}</span>
+          </div>
+        </div>
+      </div>{/* end fixed-header */}
+
+      {/* Takes list — ONLY THIS SCROLLS */}
+      <div className="scroll-body" style={{padding:'10px 20px'}}>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {takes.length===0 ? (
+            <div style={{background:'var(--paper-1)',border:'2px dashed var(--ink-0)',borderRadius:3,padding:24,textAlign:'center',fontFamily:'JetBrains Mono',fontSize:11,color:'var(--ink-2)'}}>
+              No takes yet — tap + NEW.
+            </div>
+          ) : takes.map((t,i)=>(
+            <div key={t.id} className={`take-card ${t.enabled?'enabled':'disabled'}`}>
+              <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                <div style={{width:32,alignSelf:'stretch',borderRight:'1px dashed color-mix(in srgb,var(--ink-0) 40%,transparent)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+                  <div style={{fontFamily:'Space Mono',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)'}}>TK</div>
+                  <div style={{fontFamily:'JetBrains Mono',fontSize:20,fontWeight:800,letterSpacing:'-.05em'}}>{String(i+1).padStart(2,'0')}</div>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                    <div style={{minWidth:0,flex:1}}>
+                      {editingId===t.id ? (
+                        <input autoFocus value={editLabel}
+                          onChange={e=>setEditLabel(e.target.value)}
+                          onBlur={()=>{onUpdateTake(t.id,{label:editLabel||null});setEditingId(null)}}
+                          onKeyDown={e=>e.key==='Enter'&&(onUpdateTake(t.id,{label:editLabel||null}),setEditingId(null))}
+                          style={{all:'unset',fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13,letterSpacing:'-.02em',borderBottom:'2px solid var(--spot)',color:'var(--ink-0)',width:'100%'}}/>
+                      ):(
+                        <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13,letterSpacing:'-.02em',display:'flex',alignItems:'center',gap:6,cursor:'text'}}
+                          onClick={()=>{setEditingId(t.id);setEditLabel(t.label||`Take ${i+1}`)}} title="Tap to rename">
+                          {t.label||`Take ${i+1}`}
+                          {t.favorite && <Icon name="star" size={11} color="var(--spot)"/>}
+                        </div>
+                      )}
+                      <div style={{fontFamily:'JetBrains Mono',fontSize:10,color:'var(--ink-2)',fontVariantNumeric:'tabular-nums',marginTop:2}}>{fmtTC(t.durationMs)}</div>
+                    </div>
+                    <PSwitch on={t.enabled} onChange={v=>onUpdateTake(t.id,{enabled:v})} size="sm"/>
+                  </div>
+                  <div style={{marginTop:8,opacity:t.enabled?1:.45}} onClick={()=>setPreviewId(previewId===t.id?null:t.id)} className="waveform-scrub">
+                    <Waveform progress={previewId===t.id?previewProg:0} seed={t.seed} height={24} bars={50} color="var(--ink-0)" restColor="var(--ink-3)"/>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}>
+                    <span style={{fontFamily:'Space Mono',fontSize:8,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',width:28}}>VOL</span>
+                    <PSlider value={t.volume} onChange={v=>onUpdateTake(t.id,{volume:v})}/>
+                    <span style={{fontFamily:'JetBrains Mono',fontSize:10,fontWeight:700,width:22,textAlign:'right',fontVariantNumeric:'tabular-nums'}}>{t.volume}</span>
+                    <button style={{all:'unset',cursor:'pointer',padding:4}} onClick={()=>onUpdateTake(t.id,{favorite:!t.favorite})} title={t.favorite?'Unfavorite':'Favorite'}>
+                      <Icon name="star" size={14} color={t.favorite?'var(--spot)':'var(--ink-2)'}/>
+                    </button>
+                    {deleteConfirmId===t.id ? (
+                      <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                        <button style={{all:'unset',cursor:'pointer',fontFamily:'JetBrains Mono',fontSize:9,fontWeight:800,color:'var(--spot)',border:'1.5px solid var(--spot)',borderRadius:2,padding:'2px 6px'}} onClick={()=>{onDeleteTake(t.id);setDeleteConfirmId(null);showToast('Take deleted')}}>YES</button>
+                        <button style={{all:'unset',cursor:'pointer',fontFamily:'JetBrains Mono',fontSize:9,fontWeight:800,color:'var(--ink-2)',border:'1.5px solid var(--ink-2)',borderRadius:2,padding:'2px 6px'}} onClick={()=>setDeleteConfirmId(null)}>NO</button>
+                      </div>
+                    ):(
+                      <button style={{all:'unset',cursor:'pointer',padding:4}} onClick={()=>setDeleteConfirmId(t.id)} title="Delete take">
+                        <Icon name="trash" size={14} color="var(--ink-2)"/>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Export button — fixed above tab bar */}
+      {takes.length>0 && (
+        <div className="fixed-footer">
+          <PushBtn variant="ink" size="lg" style={{width:'100%'}} onClick={onExport}>
+            ▸ Export mix
+          </PushBtn>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 4B — SESSIONS LIST
+// ═══════════════════════════════════════════════
+const SessionsListScreen = ({ sessions, onBack, onOpenSession, onNewSession, onDeleteSession, showToast }) => {
+  const [deleteId, setDeleteId] = useState(null);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <Grain/>
+
+      {/* Fixed header */}
+      <div className="fixed-header" style={{padding:'16px 20px 0',flexShrink:0}}>
+        <ScreenHeader
+          left={<IconBtn name="back" onClick={onBack} title="Back"/>}
+          title="CAT. 002"
+          right={
+            <button onClick={onNewSession}
+              style={{all:'unset',cursor:'pointer',fontFamily:'var(--font-disp)',fontSize:9,fontWeight:700,letterSpacing:'.18em',color:'var(--spot)',display:'flex',alignItems:'center',gap:4}}>
+              <Icon name="plus" size={13} color="var(--spot)" stroke={2.5}/>NEW
+            </button>
+          }
+        />
+
+        {/* Editorial heading — same style as BEATS ON FILE */}
+        <div style={{marginBottom:14,position:'relative',zIndex:3}}>
+          <div style={{fontFamily:'Space Mono,monospace',fontSize:10,fontWeight:700,letterSpacing:'.24em',color:'var(--spot)'}}>MY SESSIONS / VOL.1</div>
+          <h1 style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:34,lineHeight:.95,margin:'6px 0 0',letterSpacing:'-.04em',color:'var(--ink-0)'}}>
+            SESSIONS<br/><span style={{color:'var(--spot)'}}>ON FILE</span>
+          </h1>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontFamily:'JetBrains Mono',fontSize:11,fontWeight:500,color:'var(--ink-2)',borderTop:'1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)',paddingTop:8}}>
+            <span>TOTAL · {sessions.length}</span>
+            <span>TAKES · {sessions.reduce((a,s)=>a+s.takes.length,0)}</span>
+          </div>
+        </div>
+      </div>{/* end fixed-header */}
+
+      {/* Sessions list — scrolls */}
+      <div className="scroll-body" style={{padding:'0 20px 12px'}}>
+        {sessions.length===0 ? (
+          <div style={{background:'var(--paper-1)',border:'2px dashed var(--ink-0)',borderRadius:3,padding:36,textAlign:'center',position:'relative',zIndex:3,marginTop:8}}>
+            <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:13,marginBottom:6}}>No sessions yet.</div>
+            <div style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--ink-2)',marginBottom:16}}>Pick a beat and start recording.</div>
+            <PushBtn variant="rec" size="md" onClick={onNewSession}>● Start recording</PushBtn>
+          </div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:10,position:'relative',zIndex:3,paddingTop:4}}>
+            {sessions.map((s,i)=>(
+              <div key={s.id} style={{
+                background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:3,
+                boxShadow:'2px 2px 0 var(--ink-0)',overflow:'hidden',position:'relative',
+              }}>
+                <button style={{all:'unset',cursor:'pointer',display:'block',width:'100%'}}
+                  onClick={()=>onOpenSession(s)}>
+                  <div style={{display:'flex',gap:0}}>
+                    <div style={{width:36,background:i===0?'var(--spot)':'var(--ink-2)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',borderRight:'2px solid var(--ink-0)',flexShrink:0}}>
+                      <div style={{fontFamily:'var(--font-disp)',fontSize:7,fontWeight:700,letterSpacing:'.1em',color:'#F0EBDF',opacity:.7}}>SN</div>
+                      <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:16,letterSpacing:'-.04em',color:'#F0EBDF'}}>{String(i+1).padStart(2,'0')}</div>
+                    </div>
+                    <div style={{flex:1,padding:'10px 12px',minWidth:0}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                        <div style={{minWidth:0,flex:1}}>
+                          <div style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:13,letterSpacing:'-.02em',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.beat.title}</div>
+                          <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--ink-2)',marginTop:3,letterSpacing:'.06em'}}>
+                            {s.name} · {s.takes.length} take{s.takes.length!==1?'s':''}
+                          </div>
+                          <div style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--ink-2)',marginTop:2}}>
+                            {s.beat.bpm} BPM · {s.beat.key} · {s.takes.filter(t=>t.enabled).length}/{s.takes.length} active
+                            {s.takes.some(t=>t.favorite) && <span style={{color:'var(--spot)',marginLeft:4}}>★</span>}
+                          </div>
+                        </div>
+                        {i===0 && <Stamp rotate={-3}>RECENT</Stamp>}
+                      </div>
+                      {s.takes.length>0 && (
+                        <div style={{marginTop:8,opacity:.5}}>
+                          <Waveform progress={0} seed={s.takes[0].seed} height={16} bars={40} color="var(--ink-0)" restColor="var(--ink-3)"/>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                <div style={{borderTop:'1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)',display:'flex',background:'var(--paper-1)'}}>
+                  <button style={{all:'unset',cursor:'pointer',flex:1,padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,borderRight:'1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)',transition:'background var(--fast) var(--ease)'}}
+                    onClick={()=>onOpenSession(s)}
+                    onMouseEnter={e=>e.currentTarget.style.background='var(--paper-2)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <Icon name="play" size={12} color="var(--spot)"/>
+                    <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:10,letterSpacing:'.08em',color:'var(--spot)'}}>OPEN</span>
+                  </button>
+                  <button style={{all:'unset',cursor:'pointer',flex:1,padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,borderRight:'1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)',transition:'background var(--fast) var(--ease)'}}
+                    onClick={()=>{showToast('Share — coming soon')}}
+                    onMouseEnter={e=>e.currentTarget.style.background='var(--paper-2)'}
+                    onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                    <Icon name="share" size={12} color="var(--ink-2)"/>
+                    <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:10,letterSpacing:'.08em',color:'var(--ink-2)'}}>SHARE</span>
+                  </button>
+                  {deleteId===s.id ? (
+                    <div style={{display:'flex',gap:0,flex:1}}>
+                      <button style={{all:'unset',cursor:'pointer',flex:1,padding:'8px 4px',display:'flex',alignItems:'center',justifyContent:'center',gap:4,background:'rgba(217,58,28,.08)'}}
+                        onClick={()=>{onDeleteSession(s.id);setDeleteId(null);showToast('Session deleted')}}>
+                        <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:10,color:'var(--spot)'}}>YES</span>
+                      </button>
+                      <button style={{all:'unset',cursor:'pointer',flex:1,padding:'8px 4px',display:'flex',alignItems:'center',justifyContent:'center'}}
+                        onClick={()=>setDeleteId(null)}>
+                        <span style={{fontFamily:'var(--font-mono)',fontWeight:800,fontSize:10,color:'var(--ink-2)'}}>NO</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button style={{all:'unset',cursor:'pointer',flex:1,padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'center',gap:6,transition:'background var(--fast) var(--ease)'}}
+                      onClick={()=>setDeleteId(s.id)}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--paper-2)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <Icon name="trash" size={12} color="var(--ink-2)"/>
+                      <span style={{fontFamily:'var(--font-mono)',fontWeight:700,fontSize:10,letterSpacing:'.08em',color:'var(--ink-2)'}}>DELETE</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 5 — EXPORT
+// Beat fixed at top, takes scroll, EXPORT MIX button fixed above nav
+// ═══════════════════════════════════════════════
+const ExportScreen = ({ beat, takes, onBack, onExport }) => {
+  const [format,   setFormat]   = useState('MP3');
+  const [quality,  setQuality]  = useState('320');
+  const [mixType,  setMixType]  = useState('full');
+  const [printing, setPrinting] = useState(false);
+
+  const qualOpts  = format==='MP3' ? ['128','192','320'] : ['16','24'];
+  const qualUnit  = format==='MP3' ? 'kbps' : 'bit';
+  const estSize   = () => {
+    const dur = beat.duration/60;
+    if(format==='MP3') return `~${(dur*(quality==='320'?2.8:quality==='192'?1.8:1.2)).toFixed(1)} MB`;
+    return `~${(dur*(quality==='24'?15:10)).toFixed(1)} MB`;
+  };
+  const enabledCount = takes.filter(t=>t.enabled).length;
+
+  const handleExport = () => {
+    setPrinting(true);
+    setTimeout(()=>{ setPrinting(false); onExport({format,quality,mixType}); },1400);
+  };
+
+  const Row = ({label,value}) => (
+    <div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',fontFamily:'JetBrains Mono'}}>
+      <span style={{fontSize:10,fontWeight:700,letterSpacing:'.18em',color:'var(--ink-2)'}}>{label}</span>
+      <span style={{fontSize:11,fontWeight:700,color:'var(--ink-0)'}}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <Grain/>
+
+      {/* Fixed header with nav header + beat card */}
+      <div className="fixed-header" style={{padding:'16px 20px 0'}}>
+        <ScreenHeader
+          left={<IconBtn name="close" onClick={onBack} title="Close"/>}
+          title="EXPORT MIX"
+          right={null}
+        />
+
+        {/* Beat card — fixed, never scrolls */}
+        <div style={{background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'12px 14px',marginBottom:12,boxShadow:'3px 3px 0 var(--ink-0)',position:'relative',zIndex:3}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <div>
+              <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--spot)'}}>EXPORT FORM · N°{String(exportCount+1).padStart(2,'0')}</div>
+              <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:18,letterSpacing:'-.03em',marginTop:3}}>{beat.title}</div>
+            </div>
+            <Stamp rotate={3}>READY</Stamp>
+          </div>
+          <div style={{display:'flex',gap:16,fontFamily:'JetBrains Mono',fontSize:10,fontWeight:700,color:'var(--ink-2)',borderTop:'1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)',paddingTop:8}}>
+            <span>{beat.bpm} BPM</span>
+            <span>{beat.key}</span>
+            <span>{enabledCount} TAKES</span>
+            <span>{fmtDur(beat.duration)}</span>
+          </div>
+        </div>
+      </div>{/* end fixed-header */}
+
+      {/* Scrollable content — mix options */}
+      <div className="scroll-body" style={{padding:'0 20px'}}>
+        <div style={{paddingTop:4,paddingBottom:8}}>
+          {/* Mix type */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--ink-2)',marginBottom:6}}>MIXDOWN TYPE</div>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              {[{id:'full',label:'Full mix'},{id:'vocals',label:'Vocals only'},{id:'beat',label:'Beat only'}].map(o=>(
+                <button key={o.id} className={`chip${mixType===o.id?' active-ink':''}`} onClick={()=>setMixType(o.id)} style={{fontSize:11}}>{o.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Format */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--ink-2)',marginBottom:6}}>FORMAT</div>
+            <div style={{display:'flex',gap:6}}>
+              {['MP3','WAV'].map(f=>(
+                <button key={f} className={`chip${format===f?' active-ink':''}`} onClick={()=>{setFormat(f);setQuality(f==='MP3'?'320':'16')}}>{f}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quality */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--ink-2)',marginBottom:6}}>QUALITY</div>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              {qualOpts.map(q=>(
+                <button key={q} className={`chip${quality===q?' active-spot':''}`} onClick={()=>setQuality(q)} style={{fontSize:11}}>{q} {qualUnit}</button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{border:'2px solid var(--ink-0)',borderRadius:3,padding:'10px 14px',background:'var(--paper-1)'}}>
+            <Row label="EST. SIZE" value={estSize()}/>
+            <Row label="SAMPLE RATE" value="44.1 kHz"/>
+            <Row label="TAKES IN MIX" value={`${enabledCount} ENABLED`}/>
+          </div>
+
+          {/* Takes list */}
+          <div style={{marginTop:14}}>
+            <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.24em',color:'var(--ink-2)',marginBottom:8}}>TAKES IN EXPORT</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {takes.map((t,i)=>(
+                <div key={t.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',background:t.enabled?'var(--paper-0)':'var(--paper-1)',border:'1.5px solid var(--ink-0)',borderRadius:3,opacity:t.enabled?1:.55}}>
+                  <div style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:11,color:'var(--ink-2)',width:20}}>
+                    {String(i+1).padStart(2,'0')}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:'JetBrains Mono',fontWeight:700,fontSize:11,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {t.label||`Take ${i+1}`}
+                    </div>
+                    <div style={{fontFamily:'JetBrains Mono',fontSize:9,color:'var(--ink-2)',marginTop:1}}>{fmtTC(t.durationMs)}</div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    {t.favorite && <Icon name="star" size={12} color="var(--spot)"/>}
+                    <div style={{width:8,height:8,borderRadius:'50%',background:t.enabled?'#9BC653':'var(--ink-3)',border:'1.5px solid var(--ink-0)'}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* EXPORT MIX button — fixed above tab bar */}
+      <div className="fixed-footer">
+        <PushBtn variant="rec" size="lg" style={{width:'100%',position:'relative',zIndex:3}} onClick={handleExport} disabled={printing}>
+          {printing?'▸ PRINTING…':'▸ EXPORT MIX'}
+        </PushBtn>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// SCREEN 6 — EXPORT SUCCESS
+// ═══════════════════════════════════════════════
+const ExportSuccessScreen = ({ beat, exportOpts, onDone, showToast }) => {
+  const [saved, setSaved] = useState(false);
+  const { format='MP3', quality='320' } = exportOpts||{};
+
+  const estSize = format==='MP3'
+    ? `${(beat.duration/60*(quality==='320'?2.8:quality==='192'?1.8:1.2)).toFixed(1)} MB`
+    : `${(beat.duration/60*(quality==='24'?15:10)).toFixed(1)} MB`;
+
+  const now = new Date();
+  const dateStr = `${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}.${String(now.getFullYear()).slice(-2)}`;
+
+  const Row = ({label,value}) => (
+    <div style={{display:'flex',justifyContent:'space-between',padding:'4px 0',fontFamily:'JetBrains Mono'}}>
+      <span style={{fontSize:10,fontWeight:700,letterSpacing:'.18em',color:'var(--ink-2)'}}>{label}</span>
+      <span style={{fontSize:11,fontWeight:700,color:'var(--ink-0)'}}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <Grain/>
+      <div className="fixed-header" style={{padding:'16px 20px 0'}}>
+        <ScreenHeader
+          title="EXPORTED"
+          left={null}
+          right={<button onClick={onDone} style={{all:'unset',cursor:'pointer',fontFamily:'Space Mono',fontSize:10,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-0)'}}>DONE</button>}
+        />
+      </div>
+      <div className="scroll-body" style={{padding:'0 20px'}}>
+        <div style={{background:'var(--paper-0)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'18px 22px',position:'relative',zIndex:3,boxShadow:'4px 4px 0 var(--ink-0)',marginTop:10,animation:'receipt-in 350ms var(--ease-io) both',overflow:'hidden'}}>
+          <Grain/>
+          <div style={{textAlign:'center',borderBottom:'2px dashed color-mix(in srgb,var(--ink-0) 40%,transparent)',paddingBottom:12,marginBottom:12,position:'relative',zIndex:3}}>
+            <div style={{fontFamily:'Space Mono',fontSize:10,fontWeight:700,letterSpacing:'.3em',color:'var(--spot)'}}>BEATSTUDIO ∙ RECEIPT</div>
+            <div style={{fontFamily:'JetBrains Mono',fontSize:30,fontWeight:800,letterSpacing:'-.03em',marginTop:8}}>Mix printed.</div>
+            <div style={{fontFamily:'Space Mono',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',marginTop:6}}>
+              NO ∙ {String(exportCount+1).padStart(3,'0')} / {dateStr} / 09:41
+            </div>
+          </div>
+          <div style={{position:'relative',zIndex:3}}>
+            <Row label="TITLE"       value={beat.title}/>
+            <Row label="FORMAT"      value={`${format} · ${quality}${format==='MP3'?'k':'bit'}`}/>
+            <Row label="SAMPLE RATE" value="44.1 kHz"/>
+            <Row label="DURATION"    value={fmtDur(beat.duration)}/>
+            <Row label="SIZE"        value={estSize}/>
+          </div>
+          <div style={{borderTop:'2px solid var(--ink-0)',marginTop:10,paddingTop:10,display:'flex',justifyContent:'space-between',position:'relative',zIndex:3}}>
+            <span style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13}}>TOTAL</span>
+            <span style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:13}}>1 FILE</span>
+          </div>
+          <div style={{position:'absolute',bottom:-1,left:0,right:0,height:8,background:'repeating-linear-gradient(90deg,var(--paper-0) 0 8px,transparent 8px 12px)'}}/>
+        </div>
+        <div style={{display:'flex',justifyContent:'center',marginTop:16,position:'relative',zIndex:3}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--paper-1)',border:'2px solid var(--ink-0)',borderRadius:3,padding:'8px 16px'}}>
+            <div style={{width:18,height:18,borderRadius:'50%',background:'#7EC37A',border:'2px solid var(--ink-0)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <Icon name="check" size={10} color="#F0EBDF" stroke={3}/>
+            </div>
+            <span style={{fontFamily:'JetBrains Mono',fontWeight:800,fontSize:11,letterSpacing:'.08em',color:'var(--ink-0)'}}>Exported. {estSize} · {format}</span>
+          </div>
+        </div>
+      </div>
+      <div className="fixed-footer" style={{display:'flex',gap:10}}>
+        <PushBtn variant="paper" size="lg" style={{flex:1}} onClick={()=>{setSaved(true);showToast('Saved to device')}}>
+          {saved?'▸ SAVED ✓':'▸ SAVE'}
+        </PushBtn>
+        <PushBtn variant="ink" size="lg" style={{flex:1}} onClick={()=>showToast('Share sheet — coming soon')}>
+          ▸ SHARE
+        </PushBtn>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════
+// PHONE SHELL + APP ROUTER
+// ═══════════════════════════════════════════════
+function BeatStudioApp() {
+  const [route,             setRoute]             = useState('home');
+  const [animDir,           setAnimDir]           = useState('forward');
+  const [prevRoute,         setPrevRoute]         = useState(null);
+  const [sessionOrigin,     setSessionOrigin]     = useState('home');
+  const [sessionBackTarget, setSessionBackTarget] = useState('home');
+  const [beat,              setBeat]              = useState(null);
+  const [takes,             setTakes]             = useState([]);
+  const [exportOpts,        setExportOpts]        = useState(null);
+  const [beats,             setBeats]             = useState(BEATS_DATA);
+  const [sessions,          setSessions]          = useState(SESSIONS_SEED);
+  const [activeSessionId,   setActiveSessionId]   = useState(null);
+  const [sessionName,       setSessionName]       = useState('SESSION · APR 20');
+  const [toast,             setToast]             = useState({ msg:'', visible:false });
+  const [isRecording, setIsRecording] = useState(false);
+  const [isCounting,  setIsCounting]  = useState(false);
+  const [darkMode,    setDarkMode]    = useState(()=>{ try{return localStorage.getItem('bs-theme')==='dark'}catch{return false} });
+  const recCtrlRef = useRef({ start:null, stop:null });
+  const toastTimerRef = useRef();
+
+  // Apply data-theme to phone-body whenever darkMode changes
+  React.useEffect(()=>{
+    const body = document.querySelector('.phone-body');
+    if(body){ body.setAttribute('data-theme', darkMode ? 'dark' : 'light'); }
+    try{ localStorage.setItem('bs-theme', darkMode ? 'dark' : 'light'); }catch{}
+  }, [darkMode]);
+
+  const activeTab = route==='home'?'home'
+    : route==='library'||route==='beat'?'library'
+    : route==='sessions-list'?'sessions'
+    : (route==='session'||route==='record'||route==='export'||route==='exported')?'sessions'
+    : 'home';
+
+  const navigate = (next, dir='forward') => {
+    if(route==='record' && next!=='record'){
+      setIsRecording(false);
+      setIsCounting(false);
+      recCtrlRef.current = { start:null, stop:null };
+    }
+    setAnimDir(dir); setPrevRoute(route); setRoute(next);
+  };
+
+  const showToast = msg => {
+    clearTimeout(toastTimerRef.current);
+    setToast({ msg, visible:true });
+    toastTimerRef.current = setTimeout(()=>setToast(t=>({...t,visible:false})), 2200);
+  };
+
+  const persistSession = (id, newTakes, newName) => {
+    setSessions(prev=>prev.map(s=>s.id===id?{...s,takes:newTakes,name:newName,updatedAt:'APR 20'}:s));
+  };
+
+  const openSession = s => {
+    setSessionOrigin(route);
+    setSessionBackTarget(route);
+    setBeat(s.beat);
+    setTakes(s.takes);
+    setSessionName(s.name);
+    setActiveSessionId(s.id);
+    navigate('session','forward');
+  };
+
+  const startNewSession = () => {
+    setSessionOrigin('home');
+    setSessionBackTarget('record');
+    setActiveSessionId(null);
+    setBeat(null);
+    setTakes([]);
+    setSessionName('NEW SESSION');
+    navigate('library','forward');
+  };
+
+  const handleFinishTake = ({ durationMs }) => {
+    const newTake = {
+      id:`t${Date.now()}`, label:null,
+      durationMs: durationMs||142000,
+      enabled:true, volume:80, favorite:false,
+      seed: 7+takes.length*13,
+    };
+    const updatedTakes = [...takes, newTake];
+    setTakes(updatedTakes);
+    if(activeSessionId){
+      persistSession(activeSessionId, updatedTakes, sessionName);
+    } else if(beat){
+      const newSess = {
+        id:`s${Date.now()}`,
+        name: sessionName||'NEW SESSION',
+        beatId: beat.id, beat:{...beat},
+        takes: updatedTakes,
+        createdAt:'APR 20', updatedAt:'APR 20',
+      };
+      setSessions(prev=>[newSess,...prev]);
+      setActiveSessionId(newSess.id);
+    }
+    setSessionBackTarget('record');
+    navigate('session','forward');
+    showToast('Take saved');
+  };
+
+  const updateTake = (id, patch) => {
+    const updated = takes.map(t=>t.id===id?{...t,...patch}:t);
+    setTakes(updated);
+    if(activeSessionId) persistSession(activeSessionId, updated, sessionName);
+  };
+
+  const deleteTake = id => {
+    const updated = takes.filter(t=>t.id!==id);
+    setTakes(updated);
+    if(activeSessionId) persistSession(activeSessionId, updated, sessionName);
+  };
+
+  const handleRenameSession = name => {
+    setSessionName(name);
+    if(activeSessionId) persistSession(activeSessionId, takes, name);
+  };
+
+  const deleteSession = id => {
+    setSessions(prev=>prev.filter(s=>s.id!==id));
+    if(activeSessionId===id){ setActiveSessionId(null); setTakes([]); setBeat(null); }
+  };
+
+  const addBeat = () => {
+    const nb = { id:`b${Date.now()}`, title:'NEW TRACK', bpm:100, key:'Dm', format:'MP3', duration:180, side:'A', stamp:'NEW' };
+    setBeats(prev=>[nb,...prev]); setBeat(nb); navigate('beat','forward');
+  };
+
+  const goTab = tab => {
+    if(tab==='home')     navigate('home','back');
+    if(tab==='library')  navigate('library', route==='home'?'forward':'back');
+    if(tab==='sessions') navigate('sessions-list','forward');
+  };
+
+  const animClass = animDir==='back' ? 'screen-slide-back' : 'screen-slide-in';
+  // Tab bar hidden on record, export, exported screens
+  const showTabBar = !['export','exported'].includes(route);
+
+  let screen;
+  if(route==='home')
+    screen = <HomeScreen
+      beats={beats} sessions={sessions}
+      onOpenSession={openSession}
+      onNewSession={startNewSession}
+      onGoLibrary={b=>{ if(b&&b.id){setBeat(b);navigate('beat','forward');}else navigate('library','forward'); }}
+      onGoSessions={()=>navigate('sessions-list','forward')}
+      onImport={addBeat}
+      showToast={showToast}
+      darkMode={darkMode}
+      onToggleDark={()=>setDarkMode(d=>!d)}
+    />;
+  else if(route==='library')
+    screen = <LibraryScreen
+      beats={beats}
+      onOpenBeat={b=>{setBeat(b);navigate('beat','forward');}}
+      onAddBeat={addBeat}
+      showToast={showToast}
+      darkMode={darkMode}
+      onToggleDark={()=>setDarkMode(d=>!d)}
+    />;
+  else if(route==='beat')
+    screen = <BeatDetailScreen
+      beat={beat}
+      onBack={()=>navigate(prevRoute==='home'?'home':'library','back')}
+      onStart={b=>{setBeat(b);setTakes([]);setActiveSessionId(null);setSessionName('NEW SESSION');navigate('record','forward');}}
+      showToast={showToast}
+    />;
+  else if(route==='record')
+    screen = <RecordScreen
+      beat={beat} takes={takes}
+      onBack={()=>navigate(takes.length?'session':'beat','back')}
+      onFinishTake={handleFinishTake}
+      showToast={showToast}
+      onRecordingChange={setIsRecording}
+      onCountingChange={setIsCounting}
+      recCtrlRef={recCtrlRef}
+    />;
+  else if(route==='session')
+    screen = <SessionScreen
+      beat={beat} takes={takes}
+      onBack={()=>navigate(sessionBackTarget||'home','back')}
+      onNewTake={()=>{ setSessionBackTarget('record'); navigate('record','forward'); }}
+      onExport={()=>navigate('export','forward')}
+      onUpdateTake={updateTake}
+      onDeleteTake={deleteTake}
+      showToast={showToast}
+      sessionName={sessionName}
+      onRenameSession={handleRenameSession}
+    />;
+  else if(route==='sessions-list')
+    screen = <SessionsListScreen
+      sessions={sessions}
+      onBack={()=>navigate('home','back')}
+      onOpenSession={openSession}
+      onNewSession={startNewSession}
+      onDeleteSession={deleteSession}
+      showToast={showToast}
+    />;
+  else if(route==='export')
+    screen = <ExportScreen
+      beat={beat} takes={takes}
+      onBack={()=>navigate('session','back')}
+      onExport={opts=>{exportCount++;setExportOpts(opts);navigate('exported','forward');}}
+    />;
+  else if(route==='exported')
+    screen = <ExportSuccessScreen
+      beat={beat} exportOpts={exportOpts}
+      onDone={()=>navigate(sessionOrigin||'home','back')}
+      showToast={showToast}
+    />;
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const SettingsSheet = () => (
+    <Sheet open={settingsOpen} onClose={()=>setSettingsOpen(false)} title="SETTINGS">
+      {/* ── Appearance ── */}
+      <div style={{marginBottom:4}}>
+        <div style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',marginBottom:10}}>APPEARANCE</div>
+        <button
+          className={`theme-toggle${darkMode?' dark-active':''}`}
+          style={{width:'100%',justifyContent:'space-between'}}
+          onClick={()=>{setSettingsOpen(false);setDarkMode(d=>!d);}}>
+          <span style={{display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:14}}>{darkMode?'🌙':'☀️'}</span>
+            {darkMode ? 'Studio Mode · ON' : 'Studio Mode · OFF'}
+          </span>
+          <span style={{fontFamily:'var(--font-mono)',fontSize:10,fontWeight:800,
+            color:darkMode?'var(--spot)':'var(--ink-2)',letterSpacing:'.1em'}}>
+            {darkMode?'DARK':'LIGHT'}
+          </span>
+        </button>
+      </div>
+      {/* ── Audio ── */}
+      <div style={{marginTop:16,paddingTop:16,borderTop:'1px dashed rgba(23,22,26,.25)'}}>
+        <div style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',marginBottom:10}}>AUDIO</div>
+        <MenuRow icon="mic"     label="Input Device"    hint="Built-in Microphone"   onClick={()=>showToast('Input — coming soon')}/>
+        <MenuRow icon="cassette"label="Sample Rate"     hint="44.1 kHz"              onClick={()=>showToast('Sample rate — coming soon')}/>
+        <MenuRow icon="list"    label="Default Format"  hint="WAV 16-bit"            onClick={()=>showToast('Format — coming soon')}/>
+      </div>
+      {/* ── About ── */}
+      <div style={{marginTop:16,paddingTop:16,borderTop:'1px dashed rgba(23,22,26,.25)'}}>
+        <div style={{fontFamily:'var(--font-mono)',fontSize:9,fontWeight:700,letterSpacing:'.2em',color:'var(--ink-2)',marginBottom:10}}>ABOUT</div>
+        <MenuRow icon="more"   label="BeatStudio"       hint="v1.0 · build 042"      onClick={()=>showToast('BeatStudio v1.0')}/>
+        <MenuRow icon="share"  label="Privacy Policy"   hint="beatstudio.app/privacy" onClick={()=>showToast('Privacy — coming soon')}/>
+      </div>
+    </Sheet>
+  );
+
+  const TabBar = () => (
+    <div className="tab-bar">
+      <button className={`tab-btn${activeTab==='home'?' active':''}`} onClick={()=>goTab('home')}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={activeTab==='home'?'var(--spot)':'var(--ink-2)'} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span className="tab-label" style={{color:activeTab==='home'?'var(--spot)':'var(--ink-2)'}}>Home</span>
+      </button>
+
+      <button className={`tab-btn${activeTab==='library'?' active':''}`} onClick={()=>goTab('library')}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={activeTab==='library'?'var(--spot)':'var(--ink-2)'} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="1"/>
+          <circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/>
+          <rect x="7" y="16" width="10" height="1.5"/>
+        </svg>
+        <span className="tab-label" style={{color:activeTab==='library'?'var(--spot)':'var(--ink-2)'}}>Beats</span>
+      </button>
+
+      <button className="tab-btn" style={{position:'relative'}} onClick={()=>{
+        if(route==='record'){
+          if(isRecording){ recCtrlRef.current.stop&&recCtrlRef.current.stop(); }
+          else if(!isCounting){ recCtrlRef.current.start&&recCtrlRef.current.start(); }
+        } else {
+          if(beat){ navigate('record','forward'); }
+          else { startNewSession(); showToast('Pick a beat first'); }
+        }
+      }}>
+        <div style={{
+          width:52,height:52,borderRadius:'50%',
+          background: isRecording ? 'var(--spot)' : route==='record' ? 'var(--ink-0)' : 'var(--ink-0)',
+          border: isRecording ? '3px solid var(--spot-dk)' : '3px solid var(--ink-0)',
+          display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow: isRecording
+            ? '0 0 20px rgba(217,58,28,.9), 0 0 40px rgba(217,58,28,.4), 3px 3px 0 var(--spot-dk)'
+            : route==='record'
+            ? '0 0 10px rgba(217,58,28,.3), 3px 3px 0 var(--spot-dk)'
+            : '3px 3px 0 #000,inset 0 1px 0 rgba(255,255,255,.15)',
+          marginTop:-18,
+          transition:'all 120ms var(--ease)',
+          animation: isRecording ? 'rec-pulse 1.1s infinite ease-in-out' : 'none',
+          cursor: isCounting ? 'wait' : 'pointer',
+        }}>
+          {isRecording ? (
+            // Stop icon (square) when recording
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#F0EBDF" stroke="none">
+              <rect x="5" y="5" width="14" height="14" rx="2"/>
+            </svg>
+          ) : (
+            // Rec circle when not recording
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#F0EBDF" stroke="none">
+              <circle cx="12" cy="12" r="7"/>
+            </svg>
+          )}
+        </div>
+        <span className="tab-label" style={{
+          color: isRecording ? 'var(--spot)' : route==='record' ? 'var(--spot)' : 'var(--ink-0)',
+          marginTop:-2,
+          animation: isRecording ? 'blink 1s infinite' : 'none',
+        }}>{isRecording ? '● REC' : 'Record'}</span>
+      </button>
+
+      <button className={`tab-btn${activeTab==='sessions'?' active':''}`} style={{position:'relative'}} onClick={()=>goTab('sessions')}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={activeTab==='sessions'?'var(--spot)':'var(--ink-2)'} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="4" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="18" x2="20" y2="18"/>
+        </svg>
+        <span className="tab-label" style={{color:activeTab==='sessions'?'var(--spot)':'var(--ink-2)'}}>Sessions</span>
+        {sessions.length>0&&(
+          <div style={{position:'absolute',top:8,right:'calc(50% - 18px)',width:14,height:14,borderRadius:'50%',background:'var(--spot)',border:'2px solid var(--paper-0)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontFamily:'var(--font-mono)',fontSize:7,fontWeight:800,color:'#F0EBDF'}}>{Math.min(sessions.length,9)}</span>
+          </div>
+        )}
+      </button>
+
+      <button className="tab-btn" onClick={()=>setSettingsOpen(true)}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="var(--ink-2)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span className="tab-label" style={{color:'var(--ink-2)'}}>Settings</span>
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="phone-wrap">
+      <div className="phone-body">
+        <div className="phone-notch"/>
+        <div className="phone-statusbar"
+          style={{color:'var(--ink-0)'}}>
+          <span style={{fontVariantNumeric:'tabular-nums'}}>9:41</span>
+          <span style={{display:'inline-flex',gap:6,alignItems:'center'}}>
+            <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" fill="currentColor"/><rect x="4.5" y="5" width="3" height="6" fill="currentColor"/><rect x="9" y="2.5" width="3" height="8.5" fill="currentColor"/><rect x="13.5" y="0" width="3" height="11" fill="currentColor"/></svg>
+            <svg width="25" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="2" stroke="currentColor" fill="none"/><rect x="2" y="2" width="18" height="8" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div key={route} className={`phone-screen ${animClass}`}
+          style={{bottom:showTabBar?68:0}}>
+          {screen}
+        </div>
+        {showTabBar && <TabBar/>}
+        <SettingsSheet/>
+        {toast.msg && <Toast msg={toast.msg} visible={toast.visible}/>}
+      </div>
+      <div className="phone-label">BEATSTUDIO ▸ {route.toUpperCase()} {darkMode?'· STUDIO':''}</div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<BeatStudioApp/>);
+</script>
+</body>
+</html>
