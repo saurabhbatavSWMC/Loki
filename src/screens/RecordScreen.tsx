@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Beat, Take } from '../types';
 import { fmtTC } from '../lib/format';
 import { Icon, IconBtn, Grain } from '../components/Icon';
@@ -99,9 +99,30 @@ export const RecordScreen = ({
     };
   }, []);
 
-  const refreshDevices = async () => {
-    setDevices(await listInputDevices());
-  };
+  const refreshDevices = useCallback(async () => {
+    const list = await listInputDevices();
+    // enumerateDevices returns blank labels without an active stream;
+    // if we still get no labels, request a temporary stream to unlock them.
+    const hasLabels = list.some((d) => d.label);
+    if (!hasLabels && list.length > 0) {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const labeled = await listInputDevices();
+        s.getTracks().forEach((t) => t.stop());
+        setDevices(labeled);
+        return;
+      } catch {
+        /* permission denied — show unlabeled list anyway */
+      }
+    }
+    setDevices(list);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => void refreshDevices();
+    navigator.mediaDevices?.addEventListener('devicechange', handler);
+    return () => navigator.mediaDevices?.removeEventListener('devicechange', handler);
+  }, [refreshDevices]);
 
   // Keep the screen awake while recording or holding the mic open.
   useWakeLock(recorder.recording || recorder.ready);
@@ -536,6 +557,17 @@ export const RecordScreen = ({
       </Sheet>
 
       <Sheet open={devicesOpen} onClose={() => setDevicesOpen(false)} title="INPUT DEVICE">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 4px 4px' }}>
+          <button
+            onClick={() => void refreshDevices()}
+            style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: 'var(--ink-2)', padding: '4px 8px', border: '1.5px solid var(--line-0)', borderRadius: 4 }}
+            type="button"
+            title="Refresh device list"
+          >
+            <Icon name="refresh" size={11} color="var(--ink-2)" />
+            REFRESH
+          </button>
+        </div>
         {devices.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>
             No input devices detected.
