@@ -6,6 +6,7 @@ import { Cassette, Waveform } from '../components/audio-visuals';
 import { renderMix, downloadBlob } from '../audio/mix-export';
 import { loadAudioBlob } from '../db/queries';
 import { shareFile } from '../lib/share';
+import { useStackWindow } from '../hooks/useStackWindow';
 
 interface Props {
   sessions: SessionWithBeat[];
@@ -15,6 +16,8 @@ interface Props {
   onDeleteSession: (id: string) => void;
   showToast: (msg: string) => void;
 }
+
+const SESSIONS_VISIBLE = 4;
 
 export const SessionsListScreen = ({
   sessions,
@@ -26,6 +29,8 @@ export const SessionsListScreen = ({
 }: Props) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
+
+  const { listRef, containerHeight } = useStackWindow(SESSIONS_VISIBLE);
 
   const handleShare = async (s: SessionWithBeat) => {
     if (sharingId) return;
@@ -97,9 +102,12 @@ export const SessionsListScreen = ({
             <PushBtn variant="rec" size="md" onClick={onNewSession}>● Start recording</PushBtn>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', zIndex: 3, paddingTop: 4 }}>
+          <div
+            ref={listRef}
+            style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4, overflowY: 'auto', overflowX: 'hidden', height: containerHeight, scrollbarWidth: 'none' }}
+          >
             {sessions.map((s, i) => (
-              <div key={s.id} style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, boxShadow: '2px 2px 0 var(--shadow)', overflow: 'hidden', position: 'relative' }}>
+              <div key={s.id} style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, boxShadow: '2px 2px 0 var(--shadow)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
                 <button style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%' }} onClick={() => onOpenSession(s)} type="button">
                   <div style={{ display: 'flex', gap: 0 }}>
                     <div style={{ width: 36, background: i === 0 ? 'var(--spot)' : 'var(--ink-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '2px solid var(--line-0)', flexShrink: 0 }}>

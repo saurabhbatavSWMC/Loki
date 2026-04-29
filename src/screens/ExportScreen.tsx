@@ -75,7 +75,7 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <Grain />
 
-      <div className="fixed-header lib-sticky" style={{ padding: '16px 20px 0' }}>
+      <div className="fixed-header" style={{ padding: '16px 20px 0' }}>
         <ScreenHeader left={<IconBtn name="close" onClick={onBack} title="Close" />} title="EXPORT MIX" right={null} />
 
         <div style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '12px 14px', marginBottom: 12, boxShadow: '3px 3px 0 var(--shadow)', position: 'relative', zIndex: 3 }}>

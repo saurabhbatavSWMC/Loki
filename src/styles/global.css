@@ -227,13 +227,18 @@ input{font-family:inherit}
 .scroll-body::-webkit-scrollbar{display:none}
 .scroll-body{scrollbar-width:none}
 .fixed-header{flex-shrink:0;background:var(--paper-0);position:relative;z-index:20;transition:var(--theme-transition)}
-.fixed-header.lib-sticky{box-shadow:0 8px 10px -8px rgba(0,0,0,.22)}
+.fixed-header.lib-sticky{box-shadow:none}
 .fixed-footer{flex-shrink:0;padding:12px 20px 14px;border-top:2px solid var(--line-0);background:var(--paper-0);position:relative;z-index:20;transition:var(--theme-transition)}
+
+/* ── STACKING CARDS ──────────────────────────── */
+.stack-viewport{position:relative;overflow:hidden}
+.stack-card{transition:transform 220ms var(--ease),opacity 220ms var(--ease)}
+.stack-card.exiting{position:absolute;top:0;left:0;right:0;opacity:0;transform:translateY(-100%);pointer-events:none}
 .noscroll::-webkit-scrollbar{display:none}
 .noscroll{scrollbar-width:none}
 
 /* ── SWIPE-TO-DELETE ROW ──────────────────────── */
-.swipe-row{position:relative;overflow:hidden;border-radius:5px;touch-action:pan-y}
+.swipe-row{position:relative;overflow:hidden;border-radius:5px;touch-action:pan-y;margin-right:-4px;padding-right:4px}
 .swipe-row-content{position:relative;z-index:2;transition:transform 220ms var(--ease);background:var(--paper-0)}
 .swipe-row-content.dragging{transition:none}
 .swipe-row-action{position:absolute;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;background:var(--spot);color:#F0EBDF;font-family:var(--font-mono);font-weight:800;font-size:11px;letter-spacing:.14em;z-index:1;gap:6px;border:2px solid var(--line-0);border-radius:5px}

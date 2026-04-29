@@ -7,6 +7,7 @@ import { Cassette } from '../components/audio-visuals';
 import { SwipeRow } from '../components/SwipeRow';
 import { useDropZone } from '../hooks/useDropZone';
 import { haptics } from '../lib/haptics';
+import { useStackWindow } from '../hooks/useStackWindow';
 
 interface Props {
   beats: Beat[];
@@ -311,67 +312,115 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
         )}
       </div>
 
-      <div className="scroll-body" style={{ padding: '0 20px 12px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
-          {!searchActive && beats.length === 0 && !favOnly && (
-            <div
-              style={{
-                background: 'var(--paper-1)',
-                border: '2px dashed var(--line-0)',
-                borderRadius: 5,
-                padding: '24px 16px 28px',
-                textAlign: 'center',
-                position: 'relative',
+      <StackedBeats
+        filtered={filtered}
+        beats={beats}
+        searchActive={searchActive}
+        query={query}
+        favOnly={favOnly}
+        sortMode={sortMode}
+        sortDir={sortDir}
+        closeSearch={closeSearch}
+        onOpenBeat={onOpenBeat}
+        onDeleteBeat={onDeleteBeat}
+        showToast={showToast}
+      />
+    </div>
+  );
+};
+
+const BEATS_VISIBLE = 6;
+
+const StackedBeats = ({
+  filtered,
+  beats,
+  searchActive,
+  query,
+  favOnly,
+  sortMode,
+  sortDir,
+  closeSearch,
+  onOpenBeat,
+  onDeleteBeat,
+  showToast,
+}: {
+  filtered: Beat[];
+  beats: Beat[];
+  searchActive: boolean;
+  query: string;
+  favOnly: boolean;
+  sortMode: string;
+  sortDir: string;
+  closeSearch: () => void;
+  onOpenBeat: (b: Beat) => void;
+  onDeleteBeat: (id: string) => void;
+  showToast: (msg: string) => void;
+}) => {
+  const { listRef, containerHeight } = useStackWindow(BEATS_VISIBLE);
+
+  return (
+    <div className="scroll-body" style={{ padding: '0 20px 12px' }}>
+      <div
+        ref={listRef}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          paddingTop: 4,
+          paddingBottom: 8,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          height: containerHeight,
+          scrollbarWidth: 'none',
+        }}
+      >
+        {!searchActive && beats.length === 0 && !favOnly && (
+          <div style={{ background: 'var(--paper-1)', border: '2px dashed var(--line-0)', borderRadius: 5, padding: '24px 16px 28px', textAlign: 'center', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 12, right: 12 }}><Stamp rotate={6}>EMPTY</Stamp></div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14, opacity: 0.45, filter: 'grayscale(0.3)' }}>
+              <Cassette width={220} title="" side="A" bpm={0} spinning={false} />
+            </div>
+            <div style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 13, color: 'var(--ink-0)', marginBottom: 4 }}>No beats yet.</div>
+            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--ink-2)' }}>Import one to start.</div>
+          </div>
+        )}
+        {favOnly && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 24, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>No favorites yet.</div>
+        )}
+        {searchActive && query && filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: 36, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>—</div>
+            No beats match "{query}"
+          </div>
+        )}
+        {filtered.map((b) => (
+          <div key={b.id} style={{ position: 'relative', flexShrink: 0 }}>
+            {searchActive && query && (
+              <div style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, border: '2px solid var(--spot)', borderRadius: 7, pointerEvents: 'none', opacity: 0.35, zIndex: 3 }} />
+            )}
+            <SwipeRow
+              resetSignal={query + sortMode + sortDir + (favOnly ? '1' : '0')}
+              onDelete={() => {
+                haptics.warn();
+                onDeleteBeat(b.id);
+                showToast('Beat removed');
               }}
             >
-              <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                <Stamp rotate={6}>EMPTY</Stamp>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14, opacity: 0.45, filter: 'grayscale(0.3)' }}>
-                <Cassette width={220} title="" side="A" bpm={0} spinning={false} />
-              </div>
-              <div style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 13, color: 'var(--ink-0)', marginBottom: 4 }}>No beats yet.</div>
-              <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--ink-2)' }}>Import one to start.</div>
-            </div>
-          )}
-          {favOnly && filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 24, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>No favorites yet.</div>
-          )}
-          {searchActive && query && filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 36, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>—</div>
-              No beats match "{query}"
-            </div>
-          )}
-          {filtered.map((b) => (
-            <div key={b.id} style={{ position: 'relative' }}>
-              {searchActive && query && (
-                <div style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, border: '2px solid var(--spot)', borderRadius: 7, pointerEvents: 'none', opacity: 0.35, zIndex: 3 }} />
-              )}
-              <SwipeRow
-                resetSignal={query + sortMode + sortDir + (favOnly ? '1' : '0')}
-                onDelete={() => {
-                  haptics.warn();
-                  onDeleteBeat(b.id);
-                  showToast('Beat removed');
+              <TapeLabel
+                title={b.title}
+                meta={`${b.bpm} BPM · ${b.key} · ${fmtDur(b.duration)} · ${b.format}`}
+                side={b.side}
+                stamp={b.stamp ?? undefined}
+                color={b.stamp === 'NEW' ? 'var(--spot)' : b.stamp === 'FAV' ? 'var(--ink-0)' : 'var(--ink-2)'}
+                highlight={searchActive && query ? query : undefined}
+                onClick={() => {
+                  if (searchActive) closeSearch();
+                  onOpenBeat(b);
                 }}
-              >
-                <TapeLabel
-                  title={b.title}
-                  meta={`${b.bpm} BPM · ${b.key} · ${fmtDur(b.duration)} · ${b.format}`}
-                  side={b.side}
-                  stamp={b.stamp ?? undefined}
-                  color={b.stamp === 'NEW' ? 'var(--spot)' : b.stamp === 'FAV' ? 'var(--ink-0)' : 'var(--ink-2)'}
-                  highlight={searchActive && query ? query : undefined}
-                  onClick={() => {
-                    if (searchActive) closeSearch();
-                    onOpenBeat(b);
-                  }}
-                />
-              </SwipeRow>
-            </div>
-          ))}
-        </div>
+              />
+            </SwipeRow>
+          </div>
+        ))}
       </div>
     </div>
   );

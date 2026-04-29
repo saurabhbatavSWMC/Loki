@@ -10,6 +10,9 @@ import { createLiveMix, type LiveMix } from '../audio/live-mix';
 import { renderMix, downloadBlob } from '../audio/mix-export';
 import { shareFile } from '../lib/share';
 import { haptics } from '../lib/haptics';
+import { useStackWindow } from '../hooks/useStackWindow';
+
+const TAKES_VISIBLE = 2;
 
 interface Props {
   beat: Beat;
@@ -69,6 +72,8 @@ export const SessionScreen = ({
   const mixTakeMapRef = useRef<string[]>([]);
   // During mix playback, track the global time in seconds so we can compute per-take waveform progress
   const [mixTimeSec, setMixTimeSec] = useState(0);
+
+  const { listRef, containerHeight } = useStackWindow(TAKES_VISIBLE);
 
   // Load the beat blob into a shared-AudioContext player so the BEAT bar can scrub real audio.
   useEffect(() => {
@@ -512,14 +517,17 @@ export const SessionScreen = ({
       </div>
 
       <div className="scroll-body" style={{ padding: '10px 20px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          ref={listRef}
+          style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', overflowX: 'hidden', height: containerHeight, scrollbarWidth: 'none' }}
+        >
           {takes.length === 0 ? (
             <div style={{ background: 'var(--paper-1)', border: '2px dashed var(--line-0)', borderRadius: 5, padding: 24, textAlign: 'center', fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--ink-2)' }}>
               No takes yet — tap + NEW.
             </div>
           ) : (
             takes.map((t, i) => (
-              <div key={t.id} className={`take-card ${t.enabled ? 'enabled' : 'disabled'}`}>
+              <div key={t.id} className={`take-card ${t.enabled ? 'enabled' : 'disabled'}`} style={{ flexShrink: 0 }}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <div style={{ width: 32, alignSelf: 'stretch', borderRight: '1px dashed color-mix(in srgb,var(--ink-0) 40%,transparent)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)' }}>TK</div>
