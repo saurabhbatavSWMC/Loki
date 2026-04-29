@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Beat, ExportOpts, ScreenRoute, Session, SessionWithBeat, Take } from './types';
 import { todayStamp } from './lib/format';
 import { useDatabase } from './hooks/useDatabase';
@@ -20,6 +20,7 @@ import {
   upsertSession as dbUpsertSession,
 } from './db/queries';
 import { listInputDevices } from './audio/recorder';
+import { Icon } from './components/Icon';
 import { Sheet, MenuRow, Toast } from './components/primitives';
 import { TapeReel } from './components/audio-visuals';
 import { IOSInstallSheet } from './components/IOSInstallSheet';
@@ -753,9 +754,28 @@ const SettingsSheet = ({ open, onClose, darkMode, onToggleDark, showToast }: Set
     };
   }, [open]);
 
-  const refreshDevices = async () => {
-    setDevices(await listInputDevices());
-  };
+  const refreshDevices = useCallback(async () => {
+    const list = await listInputDevices();
+    const hasLabels = list.some((d) => d.label);
+    if (!hasLabels && list.length > 0) {
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const labeled = await listInputDevices();
+        s.getTracks().forEach((t) => t.stop());
+        setDevices(labeled);
+        return;
+      } catch {
+        /* permission denied — show unlabeled list anyway */
+      }
+    }
+    setDevices(list);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => void refreshDevices();
+    navigator.mediaDevices?.addEventListener('devicechange', handler);
+    return () => navigator.mediaDevices?.removeEventListener('devicechange', handler);
+  }, [refreshDevices]);
 
   const pickDevice = async (id: string | null, label: string) => {
     setDeviceId(id);
@@ -807,6 +827,17 @@ const SettingsSheet = ({ open, onClose, darkMode, onToggleDark, showToast }: Set
         </div>
       </Sheet>
       <Sheet open={devicesOpen} onClose={() => setDevicesOpen(false)} title="INPUT DEVICE">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 4px 4px' }}>
+          <button
+            onClick={() => void refreshDevices()}
+            style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: 'var(--ink-2)', padding: '4px 8px', border: '1.5px solid var(--line-0)', borderRadius: 4 }}
+            type="button"
+            title="Refresh device list"
+          >
+            <Icon name="refresh" size={11} color="var(--ink-2)" />
+            REFRESH
+          </button>
+        </div>
         {devices.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>
             No input devices detected.
