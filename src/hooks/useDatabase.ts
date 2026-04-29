@@ -24,11 +24,14 @@ export function useDatabase(): UseDatabaseResult {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      await seedIfEmpty();
-      if (cancelled) return;
-      await refresh();
-      if (cancelled) return;
-      setReady(true);
+      try {
+        await seedIfEmpty();
+        if (cancelled) return;
+        await refresh();
+      } catch (e) {
+        console.error('[DB] Init failed:', e);
+      }
+      if (!cancelled) setReady(true);
     })();
     return () => {
       cancelled = true;
