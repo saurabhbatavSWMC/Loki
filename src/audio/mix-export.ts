@@ -55,10 +55,12 @@ export async function renderMix({ takes, beatBlob, beatVolume = 0.7, mode = 'ful
     throw new Error('Could not decode any audio.');
   }
 
-  const longestSec = Math.max(
-    beatBuffer?.duration ?? 0,
-    takeBuffers.reduce((max, { buffer }) => Math.max(max, buffer.duration), 0),
-  );
+  // Compute total duration accounting for take offsets
+  let longestSec = beatBuffer?.duration ?? 0;
+  for (const { take, buffer } of takeBuffers) {
+    const offsetSec = (take.beatStartMs ?? 0) / 1000;
+    longestSec = Math.max(longestSec, offsetSec + buffer.duration);
+  }
   const totalFrames = Math.ceil(longestSec * sampleRate);
 
   const offline = new OfflineAudioContext(2, totalFrames, sampleRate);
@@ -78,7 +80,8 @@ export async function renderMix({ takes, beatBlob, beatVolume = 0.7, mode = 'ful
     const gain = offline.createGain();
     gain.gain.value = (take.volume ?? 80) / 100;
     src.connect(gain).connect(offline.destination);
-    src.start(0);
+    const offsetSec = Math.max(0, (take.beatStartMs ?? 0) / 1000);
+    src.start(offsetSec);
   }
 
   const rendered = await offline.startRendering();

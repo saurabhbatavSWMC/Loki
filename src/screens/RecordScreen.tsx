@@ -273,13 +273,25 @@ export const RecordScreen = ({
     if (recorder.error) return;
     void refreshDevices();
 
-    // Lock the beat start position to the current cue.
-    recordStartBeatMsRef.current = Math.round(cueProgress * beat.duration * 1000);
-
     if (metronome) {
       metronomeStopRef.current?.();
       metronomeStopRef.current = startMetronome(beat.bpm, 0.4);
     }
+
+    // Capture the actual beat player position right when capture begins
+    const captureStartPosition = () => {
+      const player = beatPlayerRef.current;
+      if (player) {
+        const d = player.duration();
+        if (d > 0 && isFinite(d)) {
+          recordStartBeatMsRef.current = Math.round((player.currentTime() / d) * beat.duration * 1000);
+        } else {
+          recordStartBeatMsRef.current = Math.round(cueProgress * beat.duration * 1000);
+        }
+      } else {
+        recordStartBeatMsRef.current = Math.round(cueProgress * beat.duration * 1000);
+      }
+    };
 
     if (countIn) {
       const beat_ms = Math.round(60000 / beat.bpm);
@@ -296,11 +308,13 @@ export const RecordScreen = ({
         } else {
           setCounting(0);
           onCountingChangeRef.current?.(false);
+          captureStartPosition();
           recorder.beginCapture();
         }
       };
       window.setTimeout(tickVisual, beat_ms);
     } else {
+      captureStartPosition();
       recorder.beginCapture();
     }
   };

@@ -65,6 +65,10 @@ export const SessionScreen = ({
   const mixRef = useRef<LiveMix | null>(null);
   const [mixPlaying, setMixPlaying] = useState(false);
   const [mixLoading, setMixLoading] = useState(false);
+  // Track which take indices map to which take ids in the live mix (beat is always idx 0)
+  const mixTakeMapRef = useRef<string[]>([]);
+  // During mix playback, track the global time in seconds so we can compute per-take waveform progress
+  const [mixTimeSec, setMixTimeSec] = useState(0);
 
   // Load the beat blob into a shared-AudioContext player so the BEAT bar can scrub real audio.
   useEffect(() => {
@@ -86,10 +90,11 @@ export const SessionScreen = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat.audioBlobKey]);
 
-  // Live volume update on beat player.
+  // Live volume update on beat player + live mix beat track.
   useEffect(() => {
     beatPlayerRef.current?.setVolume(beatVol / 100);
-  }, [beatVol]);
+    if (mixPlaying) mixRef.current?.setVolume(0, beatVol / 100);
+  }, [beatVol, mixPlaying]);
 
   const handleShare = async () => {
     if (sharing) return;
@@ -133,6 +138,8 @@ export const SessionScreen = ({
     if (mixPlaying) {
       mixRef.current?.pause();
       setMixPlaying(false);
+      setBeatProgress(0);
+      setMixTimeSec(0);
       return;
     }
     if (!beat.audioBlobKey) {
@@ -151,15 +158,29 @@ export const SessionScreen = ({
       const takeBlobs = await Promise.all(
         enabled.map(async (t) => ({ blob: await loadAudioBlob(t.audioBlobKey as string), take: t })),
       );
+      const validTakes = takeBlobs.filter((tb): tb is { blob: Blob; take: typeof enabled[0] } => !!tb.blob);
       const sources = [
-        { blob: beatBlob, volume: beatVol / 100, loop: false },
-        ...takeBlobs
-          .filter((tb): tb is { blob: Blob; take: typeof enabled[0] } => !!tb.blob)
-          .map((tb) => ({ blob: tb.blob, volume: tb.take.volume / 100, loop: false })),
+        { blob: beatBlob, volume: beatVol / 100, loop: false, offsetSec: 0 },
+        ...validTakes.map((tb) => ({
+          blob: tb.blob,
+          volume: tb.take.volume / 100,
+          loop: false,
+          offsetSec: (tb.take.beatStartMs ?? 0) / 1000,
+        })),
       ];
+      mixTakeMapRef.current = validTakes.map((tb) => tb.take.id);
       mixRef.current?.destroy();
       const mix = createLiveMix(sources);
-      mix.onEnded = () => setMixPlaying(false);
+      mix.onEnded = () => {
+        setMixPlaying(false);
+        setBeatProgress(0);
+        setMixTimeSec(0);
+      };
+      mix.onProgress = (sec) => {
+        const d = mix.duration();
+        if (d > 0) setBeatProgress(Math.min(1, sec / d));
+        setMixTimeSec(sec);
+      };
       mixRef.current = mix;
       await mix.play();
       setMixPlaying(true);
@@ -168,6 +189,12 @@ export const SessionScreen = ({
     } finally {
       setMixLoading(false);
     }
+  };
+
+  // Helper: get the mix source index for a take id (beat=0, takes start at 1)
+  const getMixIdx = (takeId: string): number | null => {
+    const idx = mixTakeMapRef.current.indexOf(takeId);
+    return idx >= 0 ? idx + 1 : null;
   };
 
   useEffect(() => {
@@ -458,11 +485,16 @@ export const SessionScreen = ({
               restColor="var(--ink-3)"
               onScrub={(p) => {
                 setBeatProgress(p);
-                const player = beatPlayerRef.current;
-                if (player) {
-                  player.seek(p * (player.duration() || beat.duration));
+                if (mixPlaying && mixRef.current) {
+                  const d = mixRef.current.duration();
+                  mixRef.current.seek(p * d);
+                } else {
+                  const player = beatPlayerRef.current;
+                  if (player) {
+                    player.seek(p * (player.duration() || beat.duration));
+                  }
+                  setBeatPlaying(true);
                 }
-                setBeatPlaying(true);
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 500, color: 'var(--ink-2)', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>
@@ -515,26 +547,73 @@ export const SessionScreen = ({
                             {t.favorite && <Icon name="star" size={11} color="var(--spot)" />}
                           </div>
                         )}
-                        <div style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--ink-2)', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
+                        <div style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--ink-2)', fontVariantNumeric: 'tabular-nums', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
                           {fmtTC(t.durationMs)}
+                          <span style={{ fontSize: 9, color: 'var(--spot)', opacity: 0.8 }}>▸ {fmtTC(t.beatStartMs ?? 0)}</span>
                         </div>
                       </div>
-                      <PSwitch on={t.enabled} onChange={(v) => onUpdateTake(t.id, { enabled: v })} size="sm" />
+                      <PSwitch on={t.enabled} onChange={(v) => {
+                        onUpdateTake(t.id, { enabled: v });
+                        if (mixPlaying) {
+                          const mi = getMixIdx(t.id);
+                          if (mi !== null) mixRef.current?.setMuted(mi, !v);
+                        }
+                      }} size="sm" />
                     </div>
                     <div style={{ marginTop: 8, opacity: t.enabled ? 1 : 0.45 }}>
                       <Waveform
-                        progress={previewId === t.id ? previewProg : 0}
+                        progress={
+                          previewId === t.id ? previewProg
+                          : mixPlaying ? (() => {
+                              const offsetSec = (t.beatStartMs ?? 0) / 1000;
+                              const localSec = mixTimeSec - offsetSec;
+                              const durSec = t.durationMs / 1000;
+                              if (localSec <= 0 || durSec <= 0) return 0;
+                              return Math.min(1, localSec / durSec);
+                            })()
+                          : 0
+                        }
                         seed={t.seed}
                         height={24}
                         bars={50}
-                        color="var(--ink-0)"
+                        color={mixPlaying && mixTimeSec >= (t.beatStartMs ?? 0) / 1000 && mixTimeSec < ((t.beatStartMs ?? 0) + t.durationMs) / 1000 ? 'var(--spot)' : 'var(--ink-0)'}
                         restColor="var(--ink-3)"
                         onScrub={(p) => void scrubPreview(t, p)}
                       />
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                      <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 32 }}>SYNC</span>
+                      <PSlider
+                        value={Math.round((t.beatStartMs ?? 0) / 100)}
+                        min={0}
+                        max={Math.round(beat.duration * 10)}
+                        onChange={(v) => {
+                          const ms = v * 100;
+                          onUpdateTake(t.id, { beatStartMs: ms });
+                          if (mixPlaying) {
+                            const mi = getMixIdx(t.id);
+                            if (mi !== null) mixRef.current?.setOffset(mi, ms / 1000);
+                          }
+                        }}
+                      />
+                      <span style={{ fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 700, width: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)' }}>
+                        {((t.beatStartMs ?? 0) / 1000).toFixed(1)}s
+                      </span>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                       <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 28 }}>VOL</span>
-                      <PSlider value={t.volume} onChange={(v) => onUpdateTake(t.id, { volume: v })} />
+                      <PSlider value={t.volume} onChange={(v) => {
+                        onUpdateTake(t.id, { volume: v });
+                        // Live update solo preview player
+                        if (previewId === t.id && playerRef.current) {
+                          playerRef.current.setVolume(v / 100);
+                        }
+                        // Live update mix player
+                        if (mixPlaying) {
+                          const mi = getMixIdx(t.id);
+                          if (mi !== null) mixRef.current?.setVolume(mi, v / 100);
+                        }
+                      }} />
                       <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 700, width: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{t.volume}</span>
                       <button
                         style={{ all: 'unset', cursor: 'pointer', padding: 4 }}
