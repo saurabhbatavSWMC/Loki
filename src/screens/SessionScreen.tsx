@@ -7,15 +7,21 @@ import { Waveform } from '../components/audio-visuals';
 import { loadAudioBlob } from '../db/queries';
 import { createPlayback, type PlaybackController } from '../audio/context';
 import { createLiveMix, type LiveMix } from '../audio/live-mix';
+import { renderMix, downloadBlob } from '../audio/mix-export';
+import { shareFile } from '../lib/share';
+import { haptics } from '../lib/haptics';
 
 interface Props {
   beat: Beat;
   takes: Take[];
+  sessionId: string | null;
   onBack: () => void;
   onNewTake: () => void;
   onExport: () => void;
   onUpdateTake: (id: string, patch: Partial<Take>) => void;
   onDeleteTake: (id: string) => void;
+  onDeleteSession: () => void;
+  onDuplicateSession: () => Promise<void>;
   showToast: (msg: string) => void;
   sessionName: string;
   onRenameSession: (name: string) => void;
@@ -26,11 +32,14 @@ interface Props {
 export const SessionScreen = ({
   beat,
   takes,
+  sessionId,
   onBack,
   onNewTake,
   onExport,
   onUpdateTake,
   onDeleteTake,
+  onDeleteSession,
+  onDuplicateSession,
   showToast,
   sessionName,
   onRenameSession,
@@ -44,15 +53,81 @@ export const SessionScreen = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [confirmDeleteSession, setConfirmDeleteSession] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [previewProg, setPreviewProg] = useState(0);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(sessionName);
+  const [sharing, setSharing] = useState(false);
   const playerRef = useRef<PlaybackController | null>(null);
+  const beatPlayerRef = useRef<PlaybackController | null>(null);
   const beatRef = useRef<number | null>(null);
   const mixRef = useRef<LiveMix | null>(null);
   const [mixPlaying, setMixPlaying] = useState(false);
   const [mixLoading, setMixLoading] = useState(false);
+
+  // Load the beat blob into a shared-AudioContext player so the BEAT bar can scrub real audio.
+  useEffect(() => {
+    if (!beat.audioBlobKey) return;
+    let cancelled = false;
+    loadAudioBlob(beat.audioBlobKey).then((blob) => {
+      if (cancelled || !blob) return;
+      beatPlayerRef.current = createPlayback(blob, { volume: beatVol / 100 });
+      beatPlayerRef.current.audioEl.addEventListener('ended', () => {
+        setBeatPlaying(false);
+        setBeatProgress(0);
+      });
+    });
+    return () => {
+      cancelled = true;
+      beatPlayerRef.current?.destroy();
+      beatPlayerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [beat.audioBlobKey]);
+
+  // Live volume update on beat player.
+  useEffect(() => {
+    beatPlayerRef.current?.setVolume(beatVol / 100);
+  }, [beatVol]);
+
+  const handleShare = async () => {
+    if (sharing) return;
+    const enabled = takes.filter((t) => t.enabled && t.audioBlobKey);
+    if (enabled.length === 0 && !beat.audioBlobKey) {
+      showToast('Nothing to share — record or load a beat first');
+      return;
+    }
+    setSharing(true);
+    showToast('Bouncing mix…');
+    try {
+      const beatBlob = beat.audioBlobKey ? await loadAudioBlob(beat.audioBlobKey) : undefined;
+      const mixBlob = await renderMix({ takes, beatBlob, mode: 'full' });
+      const safeBeat = beat.title.replace(/[^a-z0-9]+/gi, '_');
+      const safeName = sessionName.replace(/[^a-z0-9]+/gi, '_') || 'session';
+      const filename = `${safeBeat}__${safeName}.wav`;
+      const result = await shareFile(mixBlob, filename, { title: `${beat.title} — ${sessionName}` });
+      if (result === 'shared') showToast('Shared');
+      else if (result === 'downloaded') {
+        // Web Share fallback already saved it
+        showToast('Downloaded — share from Files');
+      } else {
+        // Unsupported — explicit download
+        downloadBlob(mixBlob, filename);
+        showToast('Downloaded');
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Share failed');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    setMoreOpen(false);
+    showToast('Duplicating session…');
+    await onDuplicateSession();
+  };
 
   const startMix = async () => {
     if (mixPlaying) {
@@ -113,11 +188,35 @@ export const SessionScreen = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRenameTakeId, takes]);
 
+  // Drive the BEAT progress bar from real audio when available; fall back to time-based
+  // animation when the beat has no audio blob (seeded data).
   useEffect(() => {
+    const player = beatPlayerRef.current;
     if (beatPlaying) {
+      if (player) {
+        const seekSec = beatProgress * (player.duration() || beat.duration);
+        player.seek(seekSec);
+        player.play().catch((e) => {
+          console.warn('[SessionScreen] beat play failed', e);
+          setBeatPlaying(false);
+        });
+      }
       const dur = beat.duration * 1000;
       const start = Date.now() - beatProgress * dur;
       beatRef.current = window.setInterval(() => {
+        if (player) {
+          const d = player.duration();
+          if (d > 0 && isFinite(d)) {
+            const p = player.currentTime() / d;
+            if (p >= 1) {
+              setBeatPlaying(false);
+              setBeatProgress(0);
+            } else {
+              setBeatProgress(p);
+            }
+            return;
+          }
+        }
         const p = (Date.now() - start) / dur;
         if (p >= 1) {
           setBeatPlaying(false);
@@ -126,9 +225,12 @@ export const SessionScreen = ({
           setBeatProgress(p);
         }
       }, 60);
-    } else if (beatRef.current) {
-      clearInterval(beatRef.current);
-      beatRef.current = null;
+    } else {
+      player?.pause();
+      if (beatRef.current) {
+        clearInterval(beatRef.current);
+        beatRef.current = null;
+      }
     }
     return () => {
       if (beatRef.current) clearInterval(beatRef.current);
@@ -153,11 +255,30 @@ export const SessionScreen = ({
       setPreviewProg(0);
       return;
     }
+    await startTakePlayback(take, 0);
+  };
+
+  const scrubPreview = async (take: Take, p: number) => {
+    // If already playing this take, just seek
+    if (previewId === take.id && playerRef.current) {
+      const d = playerRef.current.duration();
+      if (d > 0) {
+        playerRef.current.seek(p * d);
+        setPreviewProg(p);
+      }
+      return;
+    }
+    // Otherwise start fresh from position
+    playerRef.current?.destroy();
+    playerRef.current = null;
+    await startTakePlayback(take, p);
+  };
+
+  const startTakePlayback = async (take: Take, startProg: number) => {
     setPreviewId(take.id);
-    setPreviewProg(0);
+    setPreviewProg(startProg);
     if (!take.audioBlobKey) {
-      // synthetic preview for seed-only takes — animate progress over duration
-      const start = Date.now();
+      const start = Date.now() - startProg * take.durationMs;
       const interval = window.setInterval(() => {
         const p = (Date.now() - start) / take.durationMs;
         if (p >= 1) {
@@ -190,6 +311,10 @@ export const SessionScreen = ({
     });
     try {
       await player.play();
+      if (startProg > 0) {
+        const d = player.duration();
+        if (d > 0) player.seek(startProg * d);
+      }
     } catch {
       showToast('Could not play take');
       setPreviewId(null);
@@ -234,12 +359,62 @@ export const SessionScreen = ({
           }
         />
 
-        <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="SESSION OPTIONS">
+        <Sheet open={moreOpen} onClose={() => { setMoreOpen(false); setConfirmDeleteSession(false); }} title="SESSION OPTIONS">
           <MenuRow icon="rename" label="Rename Session" hint={sessionName} onClick={() => { setMoreOpen(false); setEditingName(true); setNameInput(sessionName); }} />
           <MenuRow icon="upload" label="Export Mix" hint="MP3 or WAV" onClick={() => { setMoreOpen(false); onExport(); }} />
-          <MenuRow icon="share" label="Share Project File" hint="All takes + beat" onClick={() => { setMoreOpen(false); showToast('Share — coming soon'); }} />
-          <MenuRow icon="copy" label="Duplicate Session" onClick={() => { setMoreOpen(false); showToast('Session duplicated'); }} />
-          <MenuRow icon="trash" label="Delete Session" danger onClick={() => { setMoreOpen(false); onBack(); showToast('Session deleted'); }} />
+          <MenuRow
+            icon="share"
+            label={sharing ? 'Sharing…' : 'Share Mix'}
+            hint="Bounces full mix and shares"
+            onClick={() => { setMoreOpen(false); void handleShare(); }}
+          />
+          <MenuRow
+            icon="copy"
+            label="Duplicate Session"
+            hint={sessionId ? 'Clone takes + beat' : 'Save the session first'}
+            onClick={() => {
+              if (!sessionId) {
+                showToast('Save the session first');
+                return;
+              }
+              void handleDuplicate();
+            }}
+          />
+          {confirmDeleteSession ? (
+            <div style={{ display: 'flex', gap: 6, padding: '12px 4px', alignItems: 'center' }}>
+              <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: 'var(--spot)' }}>
+                Delete this session?
+              </span>
+              <button
+                onClick={() => setConfirmDeleteSession(false)}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: 'var(--ink-2)', border: '1.5px solid var(--ink-2)', borderRadius: 4, padding: '4px 8px' }}
+                type="button"
+              >
+                NO
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmDeleteSession(false);
+                  setMoreOpen(false);
+                  haptics.warn();
+                  onDeleteSession();
+                  showToast('Session deleted');
+                }}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: '1.5px solid var(--line-0)', borderRadius: 4, padding: '4px 10px' }}
+                type="button"
+              >
+                YES
+              </button>
+            </div>
+          ) : (
+            <MenuRow
+              icon="trash"
+              label="Delete Session"
+              danger
+              hint={sessionId ? `${takes.length} take${takes.length === 1 ? '' : 's'} will be removed` : 'Discard unsaved session'}
+              onClick={() => setConfirmDeleteSession(true)}
+            />
+          )}
         </Sheet>
 
         <div style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '12px 14px', marginBottom: 10, boxShadow: '3px 3px 0 var(--shadow)', position: 'relative', zIndex: 3 }}>
@@ -281,7 +456,14 @@ export const SessionScreen = ({
               bars={60}
               color="var(--spot)"
               restColor="var(--ink-3)"
-              onScrub={(p) => { setBeatProgress(p); setBeatPlaying(false); }}
+              onScrub={(p) => {
+                setBeatProgress(p);
+                const player = beatPlayerRef.current;
+                if (player) {
+                  player.seek(p * (player.duration() || beat.duration));
+                }
+                setBeatPlaying(true);
+              }}
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 500, color: 'var(--ink-2)', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>
               <span>{fmtTC(beatProgress * beat.duration * 1000)}</span>
@@ -339,12 +521,16 @@ export const SessionScreen = ({
                       </div>
                       <PSwitch on={t.enabled} onChange={(v) => onUpdateTake(t.id, { enabled: v })} size="sm" />
                     </div>
-                    <div
-                      style={{ marginTop: 8, opacity: t.enabled ? 1 : 0.45 }}
-                      onClick={() => playPreview(t)}
-                      className="waveform-scrub"
-                    >
-                      <Waveform progress={previewId === t.id ? previewProg : 0} seed={t.seed} height={24} bars={50} color="var(--ink-0)" restColor="var(--ink-3)" />
+                    <div style={{ marginTop: 8, opacity: t.enabled ? 1 : 0.45 }}>
+                      <Waveform
+                        progress={previewId === t.id ? previewProg : 0}
+                        seed={t.seed}
+                        height={24}
+                        bars={50}
+                        color="var(--ink-0)"
+                        restColor="var(--ink-3)"
+                        onScrub={(p) => void scrubPreview(t, p)}
+                      />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                       <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 28 }}>VOL</span>

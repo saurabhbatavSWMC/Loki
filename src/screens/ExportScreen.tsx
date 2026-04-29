@@ -4,6 +4,7 @@ import { fmtDur, fmtTC } from '../lib/format';
 import { Icon, IconBtn, Grain } from '../components/Icon';
 import { PushBtn, ScreenHeader, Stamp } from '../components/primitives';
 import { renderMix, downloadBlob } from '../audio/mix-export';
+import { loadAudioBlob } from '../db/queries';
 
 interface Props {
   beat: Beat;
@@ -37,19 +38,28 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
   };
 
   const enabledCount = takes.filter((t) => t.enabled).length;
-  const hasRealAudio = takes.some((t) => t.enabled && t.audioBlobKey);
+  const hasTakeAudio = takes.some((t) => t.enabled && t.audioBlobKey);
+  const hasBeatAudio = !!beat.audioBlobKey;
+
+  // Whether the chosen mix mode has anything to render
+  const canExport =
+    (mixType === 'full' && (hasTakeAudio || hasBeatAudio)) ||
+    (mixType === 'vocals' && hasTakeAudio) ||
+    (mixType === 'beat' && hasBeatAudio);
 
   const handleExport = async () => {
     setPrinting(true);
     try {
       const opts: ExportOpts = { format, quality, mixType };
-      if (hasRealAudio) {
-        const blob = await renderMix({ takes });
-        const filename = `${beat.title.replace(/[^a-z0-9]+/gi, '_')}_mix.wav`;
+      if (canExport) {
+        const beatBlob = beat.audioBlobKey ? await loadAudioBlob(beat.audioBlobKey) : undefined;
+        const blob = await renderMix({ takes, beatBlob, mode: mixType });
+        const suffix = mixType === 'vocals' ? 'vocals' : mixType === 'beat' ? 'beat' : 'mix';
+        const filename = `${beat.title.replace(/[^a-z0-9]+/gi, '_')}_${suffix}.wav`;
         downloadBlob(blob, filename);
         onExport(opts, blob);
       } else {
-        // No real audio (e.g., seeded takes only) — still simulate the receipt flow
+        // Seeded data only — still print the receipt for visual continuity
         await new Promise((r) => setTimeout(r, 800));
         onExport(opts);
       }
@@ -65,7 +75,7 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <Grain />
 
-      <div className="fixed-header" style={{ padding: '16px 20px 0' }}>
+      <div className="fixed-header lib-sticky" style={{ padding: '16px 20px 0' }}>
         <ScreenHeader left={<IconBtn name="close" onClick={onBack} title="Close" />} title="EXPORT MIX" right={null} />
 
         <div style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '12px 14px', marginBottom: 12, boxShadow: '3px 3px 0 var(--shadow)', position: 'relative', zIndex: 3 }}>
@@ -92,12 +102,20 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
           <div style={{ marginBottom: 14 }}>
             <div style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.24em', color: 'var(--ink-2)', marginBottom: 6 }}>MIXDOWN TYPE</div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              {[
-                { id: 'full', label: 'Full mix' },
-                { id: 'vocals', label: 'Vocals only' },
-                { id: 'beat', label: 'Beat only' },
-              ].map((o) => (
-                <button key={o.id} className={`chip${mixType === o.id ? ' active-ink' : ''}`} onClick={() => setMixType(o.id as 'full' | 'vocals' | 'beat')} style={{ fontSize: 11 }} type="button">
+              {([
+                { id: 'full' as const, label: 'Full mix', avail: hasTakeAudio || hasBeatAudio },
+                { id: 'vocals' as const, label: 'Vocals only', avail: hasTakeAudio },
+                { id: 'beat' as const, label: 'Beat only', avail: hasBeatAudio },
+              ]).map((o) => (
+                <button
+                  key={o.id}
+                  className={`chip${mixType === o.id ? ' active-ink' : ''}`}
+                  onClick={() => o.avail && setMixType(o.id)}
+                  disabled={!o.avail}
+                  style={{ fontSize: 11, opacity: o.avail ? 1 : 0.4, cursor: o.avail ? 'pointer' : 'not-allowed' }}
+                  type="button"
+                  title={!o.avail ? (o.id === 'beat' ? 'No beat audio loaded' : 'No takes recorded') : undefined}
+                >
                   {o.label}
                 </button>
               ))}
@@ -139,8 +157,9 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
           <div style={{ border: '2px solid var(--line-0)', borderRadius: 5, padding: '10px 14px', background: 'var(--paper-1)' }}>
             <Row label="EST. SIZE" value={estSize()} />
             <Row label="SAMPLE RATE" value="44.1 kHz" />
-            <Row label="TAKES IN MIX" value={`${enabledCount} ENABLED`} />
-            <Row label="SOURCE" value={hasRealAudio ? 'RECORDED' : 'SEEDED'} />
+            <Row label="TAKES IN MIX" value={mixType === 'beat' ? '0 (BEAT ONLY)' : `${enabledCount} ENABLED`} />
+            <Row label="BEAT TRACK" value={mixType === 'vocals' ? 'EXCLUDED' : hasBeatAudio ? 'INCLUDED' : 'NONE'} />
+            <Row label="SOURCE" value={(hasTakeAudio || hasBeatAudio) ? 'RECORDED' : 'SEEDED'} />
           </div>
 
           <div style={{ marginTop: 14 }}>
@@ -179,8 +198,8 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
       </div>
 
       <div className="fixed-footer">
-        <PushBtn variant="rec" size="lg" style={{ width: '100%', position: 'relative', zIndex: 3 }} onClick={handleExport} disabled={printing}>
-          {printing ? '▸ PRINTING…' : '▸ EXPORT MIX'}
+        <PushBtn variant="rec" size="lg" style={{ width: '100%', position: 'relative', zIndex: 3 }} onClick={handleExport} disabled={printing || !canExport}>
+          {printing ? '▸ PRINTING…' : canExport ? '▸ EXPORT MIX' : '▸ NOTHING TO MIX'}
         </PushBtn>
       </div>
     </div>

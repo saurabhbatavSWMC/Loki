@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { acquireRecorder, type RecorderController } from '../audio/recorder';
+import { acquireRecorder, type AcquireOpts, type RecorderController } from '../audio/recorder';
 import { haptics } from '../lib/haptics';
 
 export interface UseRecorderResult {
@@ -9,11 +9,15 @@ export interface UseRecorderResult {
   level: number;
   elapsedMs: number;
   /** Synchronous-from-tap: requests mic, prepares recorder, starts level meter. */
-  acquire: () => Promise<void>;
+  acquire: (opts?: AcquireOpts) => Promise<void>;
   /** Begin actual capture; safe to call from setTimeout after count-in. */
   beginCapture: () => void;
   stop: () => Promise<{ blob: Blob; durationMs: number; mimeType: string } | null>;
   cancel: () => void;
+  /** Adjust input gain on the live recorder (0..2). */
+  setGain: (g: number) => void;
+  /** Toggle monitoring on the live recorder. */
+  setMonitor: (on: boolean) => void;
 }
 
 export function useRecorder(): UseRecorderResult {
@@ -36,10 +40,10 @@ export function useRecorder(): UseRecorderResult {
     rafRef.current = requestAnimationFrame(tick);
   }, []);
 
-  const acquire = useCallback(async () => {
+  const acquire = useCallback(async (opts?: AcquireOpts) => {
     setError(null);
     try {
-      const ctrl = await acquireRecorder();
+      const ctrl = await acquireRecorder(opts);
       ctrl.onInterrupt = (reason) => {
         if (reason === 'mute' || reason === 'ended') {
           setError('Microphone disconnected.');
@@ -60,6 +64,14 @@ export function useRecorder(): UseRecorderResult {
       haptics.error();
     }
   }, [tick]);
+
+  const setGain = useCallback((g: number) => {
+    ctrlRef.current?.setGain(g);
+  }, []);
+
+  const setMonitor = useCallback((on: boolean) => {
+    ctrlRef.current?.setMonitor(on);
+  }, []);
 
   const beginCapture = useCallback(() => {
     const ctrl = ctrlRef.current;
@@ -109,5 +121,5 @@ export function useRecorder(): UseRecorderResult {
     };
   }, []);
 
-  return { recording, ready, error, level, elapsedMs, acquire, beginCapture, stop, cancel };
+  return { recording, ready, error, level, elapsedMs, acquire, beginCapture, stop, cancel, setGain, setMonitor };
 }

@@ -1,12 +1,32 @@
 import { getAudioContext, unlockAudio } from './context';
 
+export interface AcquireOpts {
+  /** Specific input device. If omitted, the system default is used. */
+  deviceId?: string;
+  /** 0..2 multiplier on the recorded signal. Default 1. */
+  gain?: number;
+  /** If true, the mic is also routed to speakers (risk of feedback — only enable with headphones). */
+  monitor?: boolean;
+}
+
 export interface RecorderController {
   beginCapture: () => void;
   stop: () => Promise<{ blob: Blob; durationMs: number; mimeType: string }>;
   cancel: () => void;
   getLevel: () => number;
+  /** Adjust the input gain live (0..2). */
+  setGain: (g: number) => void;
+  /** Toggle monitoring (mic → speakers) live. */
+  setMonitor: (on: boolean) => void;
   /** Hooked to interruption / track-end events. */
   onInterrupt?: (reason: 'mute' | 'ended' | 'suspended') => void;
+}
+
+/** List available audio input devices (requires prior mic permission to populate labels). */
+export async function listInputDevices(): Promise<MediaDeviceInfo[]> {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
+  const all = await navigator.mediaDevices.enumerateDevices();
+  return all.filter((d) => d.kind === 'audioinput');
 }
 
 const PREFERRED_MIMES = [
@@ -36,7 +56,7 @@ function pickMime(): string {
  *      to call from a setTimeout callback because the user already granted
  *      permission and the AudioContext has already resumed.
  */
-export async function acquireRecorder(): Promise<RecorderController> {
+export async function acquireRecorder(opts: AcquireOpts = {}): Promise<RecorderController> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error('Microphone access is not supported in this browser.');
   }
@@ -48,15 +68,16 @@ export async function acquireRecorder(): Promise<RecorderController> {
   // playback that wants to use it later.
   await unlockAudio();
 
+  const audioConstraints: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: false,
+  };
+  if (opts.deviceId) audioConstraints.deviceId = { exact: opts.deviceId } as MediaTrackConstraintSet['deviceId'];
+
   let stream: MediaStream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-      },
-    });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
   } catch (e) {
     const err = e as DOMException;
     if (err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError') {
@@ -65,21 +86,49 @@ export async function acquireRecorder(): Promise<RecorderController> {
     if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
       throw new Error('No microphone found. Connect a mic and try again.');
     }
-    throw new Error(`Mic error: ${err?.message || String(e)}`);
+    if (err?.name === 'OverconstrainedError') {
+      // Selected device unavailable — retry without deviceId
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+      });
+    } else {
+      throw new Error(`Mic error: ${err?.message || String(e)}`);
+    }
   }
 
-  const mimeType = pickMime();
-  const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-
-  // Use the SHARED AudioContext for level metering — avoids creating a
-  // second AC that fights for the audio session on iOS.
+  // Build the audio graph: source → gain → analyser → destination(stream) → recorder
+  // and (optional) gain → audioCtx.destination for monitoring.
   const audioCtx = getAudioContext();
   const source = audioCtx.createMediaStreamSource(stream);
+  const gainNode = audioCtx.createGain();
+  gainNode.gain.value = Math.max(0, Math.min(2, opts.gain ?? 1));
   const analyser = audioCtx.createAnalyser();
   analyser.fftSize = 1024;
-  source.connect(analyser);
-  const buf = new Uint8Array(analyser.fftSize);
+  // MediaStreamDestination produces a MediaStream we feed into MediaRecorder — this
+  // ensures the recorded signal has the gain applied (and any future processing).
+  const dest = audioCtx.createMediaStreamDestination();
+  source.connect(gainNode);
+  gainNode.connect(analyser);
+  analyser.connect(dest);
 
+  let monitorOn = false;
+  const setMonitor = (on: boolean) => {
+    if (on === monitorOn) return;
+    monitorOn = on;
+    try {
+      if (on) gainNode.connect(audioCtx.destination);
+      else gainNode.disconnect(audioCtx.destination);
+    } catch {
+      /* disconnect throws if not connected — ignore */
+    }
+  };
+  if (opts.monitor) setMonitor(true);
+
+  const setGain = (g: number) => {
+    gainNode.gain.value = Math.max(0, Math.min(2, g));
+  };
+
+  const buf = new Uint8Array(analyser.fftSize);
   const getLevel = (): number => {
     analyser.getByteTimeDomainData(buf);
     let sum = 0;
@@ -90,6 +139,11 @@ export async function acquireRecorder(): Promise<RecorderController> {
     const rms = Math.sqrt(sum / buf.length);
     return Math.min(1, rms * 3);
   };
+
+  const mimeType = pickMime();
+  const recorder = mimeType
+    ? new MediaRecorder(dest.stream, { mimeType })
+    : new MediaRecorder(dest.stream);
 
   const chunks: Blob[] = [];
   recorder.addEventListener('dataavailable', (e) => {
@@ -107,6 +161,8 @@ export async function acquireRecorder(): Promise<RecorderController> {
       recorder.start(250);
     },
     getLevel,
+    setGain,
+    setMonitor,
     async stop() {
       if (recorder.state === 'inactive') {
         cleanup();
@@ -156,6 +212,21 @@ export async function acquireRecorder(): Promise<RecorderController> {
     stream.getTracks().forEach((t) => t.stop());
     try {
       source.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      gainNode.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      analyser.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      dest.disconnect();
     } catch {
       /* ignore */
     }

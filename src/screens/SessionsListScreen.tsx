@@ -3,6 +3,9 @@ import type { SessionWithBeat } from '../types';
 import { Icon, IconBtn, Grain } from '../components/Icon';
 import { PushBtn, ScreenHeader, Stamp } from '../components/primitives';
 import { Cassette, Waveform } from '../components/audio-visuals';
+import { renderMix, downloadBlob } from '../audio/mix-export';
+import { loadAudioBlob } from '../db/queries';
+import { shareFile } from '../lib/share';
 
 interface Props {
   sessions: SessionWithBeat[];
@@ -22,6 +25,36 @@ export const SessionsListScreen = ({
   showToast,
 }: Props) => {
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+
+  const handleShare = async (s: SessionWithBeat) => {
+    if (sharingId) return;
+    const enabled = s.takes.filter((t) => t.enabled && t.audioBlobKey);
+    if (enabled.length === 0 && !s.beat.audioBlobKey) {
+      showToast('Nothing to share — record or load a beat first');
+      return;
+    }
+    setSharingId(s.id);
+    showToast('Bouncing mix…');
+    try {
+      const beatBlob = s.beat.audioBlobKey ? await loadAudioBlob(s.beat.audioBlobKey) : undefined;
+      const mixBlob = await renderMix({ takes: s.takes, beatBlob, mode: 'full' });
+      const safeBeat = s.beat.title.replace(/[^a-z0-9]+/gi, '_');
+      const safeName = s.name.replace(/[^a-z0-9]+/gi, '_') || 'session';
+      const filename = `${safeBeat}__${safeName}.wav`;
+      const result = await shareFile(mixBlob, filename, { title: `${s.beat.title} — ${s.name}` });
+      if (result === 'shared') showToast('Shared');
+      else if (result === 'downloaded') showToast('Downloaded — share from Files');
+      else {
+        downloadBlob(mixBlob, filename);
+        showToast('Downloaded');
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Share failed');
+    } finally {
+      setSharingId(null);
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
@@ -105,12 +138,13 @@ export const SessionsListScreen = ({
                     <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 10, letterSpacing: '.08em', color: 'var(--spot)' }}>OPEN</span>
                   </button>
                   <button
-                    style={{ all: 'unset', cursor: 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)' }}
-                    onClick={() => showToast('Share — coming soon')}
+                    style={{ all: 'unset', cursor: sharingId ? 'wait' : 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)', opacity: sharingId === s.id ? 0.6 : 1 }}
+                    onClick={() => void handleShare(s)}
+                    disabled={!!sharingId}
                     type="button"
                   >
                     <Icon name="share" size={12} color="var(--ink-2)" />
-                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 10, letterSpacing: '.08em', color: 'var(--ink-2)' }}>SHARE</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 10, letterSpacing: '.08em', color: 'var(--ink-2)' }}>{sharingId === s.id ? 'BOUNCING…' : 'SHARE'}</span>
                   </button>
                   {deleteId === s.id ? (
                     <div style={{ display: 'flex', gap: 0, flex: 1 }}>

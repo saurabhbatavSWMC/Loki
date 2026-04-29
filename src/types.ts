@@ -23,6 +23,10 @@ export interface Take {
   seed: number;
   audioBlobKey?: string | null;
   order: number;
+  /** Where on the beat timeline this take started recording (ms, from beat 0). */
+  beatStartMs?: number;
+  /** Where on the beat timeline recording stopped (ms). */
+  beatEndMs?: number;
 }
 
 export interface Session {

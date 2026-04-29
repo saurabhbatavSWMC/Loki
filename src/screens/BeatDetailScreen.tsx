@@ -5,24 +5,72 @@ import { Icon, IconBtn, Grain } from '../components/Icon';
 import { Sheet, MenuRow, PushBtn, ScreenHeader } from '../components/primitives';
 import { Cassette, Waveform } from '../components/audio-visuals';
 import { TportBtn } from '../components/primitives';
-import { loadAudioBlob } from '../db/queries';
+import { loadAudioBlob, getSessionCountForBeat } from '../db/queries';
 import { createPlayback, type PlaybackController } from '../audio/context';
+import { shareFile } from '../lib/share';
+import { haptics } from '../lib/haptics';
 
 interface Props {
   beat: Beat;
   onBack: () => void;
   onStart: (b: Beat) => void;
+  onRename: (id: string, title: string) => void;
+  onToggleFavorite: (id: string) => void;
+  onDelete: (id: string) => void;
   showToast: (msg: string) => void;
 }
 
-export const BeatDetailScreen = ({ beat, onBack, onStart, showToast }: Props) => {
+export const BeatDetailScreen = ({ beat, onBack, onStart, onRename, onToggleFavorite, onDelete, showToast }: Props) => {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0.18);
   const [doorOpen, setDoorOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [loop, setLoop] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState(beat.title);
+  const [sessionCount, setSessionCount] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const intRef = useRef<number | null>(null);
   const playerRef = useRef<PlaybackController | null>(null);
+
+  useEffect(() => {
+    setNameInput(beat.title);
+  }, [beat.title]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSessionCountForBeat(beat.id).then((n) => {
+      if (!cancelled) setSessionCount(n);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [beat.id]);
+
+  const isFav = beat.stamp === 'FAV';
+
+  const handleShare = async () => {
+    if (!beat.audioBlobKey) {
+      showToast('No audio file to share');
+      return;
+    }
+    const blob = await loadAudioBlob(beat.audioBlobKey);
+    if (!blob) {
+      showToast('Audio missing');
+      return;
+    }
+    const ext = (beat.format || 'wav').toLowerCase();
+    const filename = `${beat.title.replace(/[^a-z0-9]+/gi, '_')}.${ext}`;
+    const result = await shareFile(blob, filename, { title: beat.title });
+    if (result === 'shared') showToast('Shared');
+    else if (result === 'downloaded') showToast('Downloaded — share from Files');
+    else showToast('Share unsupported on this device');
+  };
+
+  const handleDelete = () => {
+    haptics.warn();
+    onDelete(beat.id);
+  };
 
   // Load audio blob into a shared-AudioContext player (silent-switch-safe)
   useEffect(() => {
@@ -105,6 +153,7 @@ export const BeatDetailScreen = ({ beat, onBack, onStart, showToast }: Props) =>
     if (player) {
       player.seek(p * (player.duration() || beat.duration));
     }
+    setPlaying(true);
   };
 
   return (
@@ -113,7 +162,38 @@ export const BeatDetailScreen = ({ beat, onBack, onStart, showToast }: Props) =>
       <div className="fixed-header" style={{ padding: '16px 20px 0' }}>
         <ScreenHeader
           left={<IconBtn name="back" onClick={onBack} title="Back" />}
-          title="LOADED"
+          title={
+            editingName ? (
+              <input
+                autoFocus
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onBlur={() => {
+                  setEditingName(false);
+                  const t = nameInput.trim();
+                  if (t && t !== beat.title) onRename(beat.id, t);
+                  else setNameInput(beat.title);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setEditingName(false);
+                    const t = nameInput.trim();
+                    if (t && t !== beat.title) onRename(beat.id, t);
+                    else setNameInput(beat.title);
+                  }
+                  if (e.key === 'Escape') {
+                    setEditingName(false);
+                    setNameInput(beat.title);
+                  }
+                }}
+                style={{ all: 'unset', fontFamily: 'var(--font-disp)', fontSize: 10, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-0)', borderBottom: '2px solid var(--spot)', minWidth: 120, textAlign: 'center' }}
+              />
+            ) : (
+              <span style={{ cursor: 'pointer' }} title="Tap to rename" onClick={() => { setEditingName(true); setNameInput(beat.title); }}>
+                LOADED
+              </span>
+            )
+          }
           right={
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <button className="icon-btn" onClick={() => setLoop((l) => !l)} title="Loop" style={{ opacity: loop ? 1 : 0.45 }} type="button">
@@ -123,12 +203,43 @@ export const BeatDetailScreen = ({ beat, onBack, onStart, showToast }: Props) =>
             </div>
           }
         />
-        <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="BEAT OPTIONS">
-          <MenuRow icon="star" label="Add to Favorites" onClick={() => { setMoreOpen(false); showToast('Added to favorites'); }} />
-          <MenuRow icon="rename" label="Rename Beat" hint={beat.title} onClick={() => { setMoreOpen(false); showToast('Rename — coming soon'); }} />
-          <MenuRow icon="share" label="Share Beat File" onClick={() => { setMoreOpen(false); showToast('Share — coming soon'); }} />
-          <MenuRow icon="cassette" label="View Sessions" hint="0 recorded" />
-          <MenuRow icon="trash" label="Remove from Library" danger onClick={() => { setMoreOpen(false); onBack(); showToast('Beat removed'); }} />
+        <Sheet open={moreOpen} onClose={() => { setMoreOpen(false); setConfirmDelete(false); }} title="BEAT OPTIONS">
+          <MenuRow
+            icon="star"
+            label={isFav ? 'Remove from Favorites' : 'Add to Favorites'}
+            onClick={() => {
+              setMoreOpen(false);
+              onToggleFavorite(beat.id);
+              showToast(isFav ? 'Removed from favorites' : 'Added to favorites');
+            }}
+            right={<span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)', color: isFav ? 'var(--spot)' : 'var(--ink-2)' }}>{isFav ? 'ON' : 'OFF'}</span>}
+          />
+          <MenuRow icon="rename" label="Rename Beat" hint={beat.title} onClick={() => { setMoreOpen(false); setEditingName(true); setNameInput(beat.title); }} />
+          <MenuRow icon="share" label="Share Beat File" hint={beat.audioBlobKey ? 'Audio file' : 'No audio loaded'} onClick={() => { setMoreOpen(false); void handleShare(); }} />
+          <MenuRow icon="cassette" label="Sessions for this beat" hint={`${sessionCount} recorded`} />
+          {confirmDelete ? (
+            <div style={{ display: 'flex', gap: 6, padding: '12px 4px', alignItems: 'center' }}>
+              <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700, color: 'var(--spot)' }}>
+                Delete beat & {sessionCount} session{sessionCount === 1 ? '' : 's'}?
+              </span>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: 'var(--ink-2)', border: '1.5px solid var(--ink-2)', borderRadius: 4, padding: '4px 8px' }}
+                type="button"
+              >
+                NO
+              </button>
+              <button
+                onClick={() => { setConfirmDelete(false); setMoreOpen(false); handleDelete(); }}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: '1.5px solid var(--line-0)', borderRadius: 4, padding: '4px 10px' }}
+                type="button"
+              >
+                YES
+              </button>
+            </div>
+          ) : (
+            <MenuRow icon="trash" label="Remove from Library" danger hint={sessionCount > 0 ? `Will also delete ${sessionCount} session${sessionCount === 1 ? '' : 's'}` : undefined} onClick={() => setConfirmDelete(true)} />
+          )}
         </Sheet>
       </div>
 

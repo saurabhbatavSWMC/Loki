@@ -15,7 +15,33 @@ export async function addBeat(beat: Beat): Promise<void> {
 }
 
 export async function deleteBeat(id: string): Promise<void> {
-  await db.beats.delete(id);
+  // Cascade: delete the beat, its blob, all its sessions, all takes in those sessions, and their blobs.
+  await db.transaction('rw', db.beats, db.sessions, db.takes, db.audioBlobs, async () => {
+    const beat = await db.beats.get(id);
+    const sessions = await db.sessions.where('beatId').equals(id).toArray();
+    const sessionIds = sessions.map((s) => s.id);
+    const takes = sessionIds.length
+      ? await db.takes.where('sessionId').anyOf(sessionIds).toArray()
+      : [];
+    const takeBlobKeys = takes.map((t) => t.audioBlobKey).filter((k): k is string => !!k);
+    const beatBlobKey = beat?.audioBlobKey ?? null;
+
+    if (sessionIds.length) {
+      await db.takes.where('sessionId').anyOf(sessionIds).delete();
+      await db.sessions.bulkDelete(sessionIds);
+    }
+    await db.beats.delete(id);
+    const blobsToDelete = [...takeBlobKeys, ...(beatBlobKey ? [beatBlobKey] : [])];
+    if (blobsToDelete.length) await db.audioBlobs.bulkDelete(blobsToDelete);
+  });
+}
+
+export async function updateBeat(id: string, patch: Partial<Beat>): Promise<void> {
+  await db.beats.update(id, patch);
+}
+
+export async function getSessionCountForBeat(beatId: string): Promise<number> {
+  return db.sessions.where('beatId').equals(beatId).count();
 }
 
 export async function getSessions(): Promise<SessionWithBeat[]> {
@@ -66,6 +92,57 @@ export async function deleteSession(id: string): Promise<void> {
       await db.audioBlobs.bulkDelete(blobKeys);
     }
   });
+}
+
+/**
+ * Deep-copy a session: new session row + cloned takes + cloned audio blobs.
+ * Returns the new session id.
+ */
+export async function duplicateSession(sourceId: string): Promise<string | null> {
+  const src = await db.sessions.get(sourceId);
+  if (!src) return null;
+  const takes = await db.takes.where('sessionId').equals(sourceId).toArray();
+  takes.sort((a, b) => a.order - b.order);
+
+  const newSessionId = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const now = new Date();
+  const stamp = `${now.toLocaleString('en-US', { month: 'short' }).toUpperCase()} ${now.getDate()}`;
+
+  await db.transaction('rw', db.sessions, db.takes, db.audioBlobs, async () => {
+    await db.sessions.add({
+      ...src,
+      id: newSessionId,
+      name: `${src.name} (COPY)`,
+      createdAt: stamp,
+      updatedAt: stamp,
+    });
+    for (let i = 0; i < takes.length; i++) {
+      const t = takes[i];
+      let newBlobKey: string | null = null;
+      if (t.audioBlobKey) {
+        const row = await db.audioBlobs.get(t.audioBlobKey);
+        if (row) {
+          newBlobKey = `take:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${i}`;
+          await db.audioBlobs.put({
+            key: newBlobKey,
+            blob: row.blob,
+            mime: row.mime,
+            durationMs: row.durationMs,
+            createdAt: Date.now(),
+          });
+        }
+      }
+      const newTakeId = `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${i}`;
+      await db.takes.add({
+        ...t,
+        id: newTakeId,
+        sessionId: newSessionId,
+        audioBlobKey: newBlobKey,
+      });
+    }
+  });
+
+  return newSessionId;
 }
 
 export async function getTakes(sessionId: string): Promise<Take[]> {

@@ -223,13 +223,21 @@ input{font-family:inherit}
 .import-tab:not(.active){color:var(--ink-0)}
 
 /* ── SCROLL CONTAINERS ───────────────────────── */
-.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;min-height:0}
 .scroll-body::-webkit-scrollbar{display:none}
 .scroll-body{scrollbar-width:none}
-.fixed-header{flex-shrink:0;background:var(--paper-0);position:relative;z-index:5;transition:var(--theme-transition)}
-.fixed-footer{flex-shrink:0;padding:12px 20px 14px;border-top:2px solid var(--line-0);background:var(--paper-0);position:relative;z-index:10;transition:var(--theme-transition)}
+.fixed-header{flex-shrink:0;background:var(--paper-0);position:relative;z-index:20;transition:var(--theme-transition)}
+.fixed-header.lib-sticky{box-shadow:0 8px 10px -8px rgba(0,0,0,.22)}
+.fixed-footer{flex-shrink:0;padding:12px 20px 14px;border-top:2px solid var(--line-0);background:var(--paper-0);position:relative;z-index:20;transition:var(--theme-transition)}
 .noscroll::-webkit-scrollbar{display:none}
 .noscroll{scrollbar-width:none}
+
+/* ── SWIPE-TO-DELETE ROW ──────────────────────── */
+.swipe-row{position:relative;overflow:hidden;border-radius:5px;touch-action:pan-y}
+.swipe-row-content{position:relative;z-index:2;transition:transform 220ms var(--ease);background:var(--paper-0)}
+.swipe-row-content.dragging{transition:none}
+.swipe-row-action{position:absolute;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;background:var(--spot);color:#F0EBDF;font-family:var(--font-mono);font-weight:800;font-size:11px;letter-spacing:.14em;z-index:1;gap:6px;border:2px solid var(--line-0);border-radius:5px}
+.swipe-row-action button{all:unset;cursor:pointer;color:#F0EBDF;display:flex;align-items:center;gap:4px;padding:8px 4px}
 
 /* ── TAB BAR ─────────────────────────────────── */
 .tab-bar{position:absolute;bottom:0;left:0;right:0;height:68px;background:color-mix(in srgb,var(--paper-0) 92%,transparent);backdrop-filter:blur(12px);border-top:2px solid var(--line-0);display:flex;align-items:stretch;z-index:80;transition:var(--theme-transition)}

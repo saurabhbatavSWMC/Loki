@@ -7,12 +7,19 @@ import { useStoragePersist, useStorageInfo } from './hooks/useStoragePersist';
 import {
   addBeat as dbAddBeat,
   addTake as dbAddTake,
+  deleteBeat as dbDeleteBeat,
   deleteSession as dbDeleteSession,
   deleteTake as dbDeleteTake,
+  duplicateSession as dbDuplicateSession,
+  getSession as dbGetSession,
+  getSetting,
   saveAudioBlob,
+  setSetting,
+  updateBeat as dbUpdateBeat,
   updateTake as dbUpdateTake,
   upsertSession as dbUpsertSession,
 } from './db/queries';
+import { listInputDevices } from './audio/recorder';
 import { Sheet, MenuRow, Toast } from './components/primitives';
 import { TapeReel } from './components/audio-visuals';
 import { IOSInstallSheet } from './components/IOSInstallSheet';
@@ -153,7 +160,19 @@ export default function App() {
     navigate('library', 'forward');
   };
 
-  const handleFinishTake = async ({ durationMs, blob, mimeType }: { durationMs: number; blob: Blob | null; mimeType: string }) => {
+  const handleFinishTake = async ({
+    durationMs,
+    blob,
+    mimeType,
+    beatStartMs,
+    beatEndMs,
+  }: {
+    durationMs: number;
+    blob: Blob | null;
+    mimeType: string;
+    beatStartMs?: number;
+    beatEndMs?: number;
+  }) => {
     if (!beat) return;
 
     let sessionId = activeSessionId;
@@ -190,6 +209,8 @@ export default function App() {
       seed: 7 + order * 13,
       audioBlobKey: blobKey,
       order,
+      beatStartMs: typeof beatStartMs === 'number' ? Math.max(0, Math.round(beatStartMs)) : 0,
+      beatEndMs: typeof beatEndMs === 'number' ? Math.max(0, Math.round(beatEndMs)) : undefined,
     };
     await dbAddTake(take);
     void mimeType;
@@ -233,6 +254,51 @@ export default function App() {
       setBeat(null);
     }
     await refresh();
+  };
+
+  const handleDuplicateActiveSession = async () => {
+    if (!activeSessionId) return;
+    const newId = await dbDuplicateSession(activeSessionId);
+    if (!newId) {
+      showToast('Could not duplicate');
+      return;
+    }
+    await refresh();
+    const dup = await dbGetSession(newId);
+    if (dup) {
+      setSessionOrigin(route);
+      setSessionBackTarget(route);
+      setBeat(dup.beat);
+      setTakes(dup.takes);
+      setSessionName(dup.name);
+      setActiveSessionId(dup.id);
+      showToast('Session duplicated');
+    }
+  };
+
+  const handleRenameBeat = async (id: string, title: string) => {
+    await dbUpdateBeat(id, { title });
+    if (beat?.id === id) setBeat({ ...beat, title });
+    await refresh();
+  };
+
+  const handleToggleBeatFavorite = async (id: string) => {
+    const b = beats.find((x) => x.id === id) ?? (beat?.id === id ? beat : undefined);
+    if (!b) return;
+    const nextStamp = b.stamp === 'FAV' ? null : 'FAV';
+    await dbUpdateBeat(id, { stamp: nextStamp });
+    if (beat?.id === id) setBeat({ ...beat, stamp: nextStamp });
+    await refresh();
+  };
+
+  const handleDeleteBeat = async (id: string) => {
+    await dbDeleteBeat(id);
+    if (beat?.id === id) {
+      setBeat(null);
+      navigate(prevRoute === 'home' ? 'home' : 'library', 'back');
+    }
+    await refresh();
+    showToast('Beat removed');
   };
 
   const handleAddBeat = async (file?: File) => {
@@ -351,6 +417,7 @@ export default function App() {
         }}
         onGoSessions={() => navigate('sessions-list', 'forward')}
         onImport={handleAddBeat}
+        onOpenSettings={() => setSettingsOpen(true)}
         showToast={showToast}
         darkMode={darkMode}
         onToggleDark={toggleTheme}
@@ -365,6 +432,7 @@ export default function App() {
           navigate('beat', 'forward');
         }}
         onAddBeat={handleAddBeat}
+        onDeleteBeat={(id) => void handleDeleteBeat(id)}
         showToast={showToast}
         darkMode={darkMode}
         onToggleDark={toggleTheme}
@@ -382,6 +450,9 @@ export default function App() {
           setSessionName('NEW SESSION');
           navigate('record', 'forward');
         }}
+        onRename={(id, title) => void handleRenameBeat(id, title)}
+        onToggleFavorite={(id) => void handleToggleBeatFavorite(id)}
+        onDelete={(id) => void handleDeleteBeat(id)}
         showToast={showToast}
       />
     );
@@ -403,6 +474,7 @@ export default function App() {
       <SessionScreen
         beat={beat}
         takes={takes}
+        sessionId={activeSessionId}
         onBack={() => navigate(sessionBackTarget || 'home', 'back')}
         onNewTake={() => {
           setSessionBackTarget('record');
@@ -411,6 +483,13 @@ export default function App() {
         onExport={() => navigate('export', 'forward')}
         onUpdateTake={(id, patch) => void updateTake(id, patch)}
         onDeleteTake={(id) => void deleteTake(id)}
+        onDeleteSession={() => {
+          if (activeSessionId) {
+            void handleDeleteSession(activeSessionId);
+          }
+          navigate(sessionBackTarget || 'home', 'back');
+        }}
+        onDuplicateSession={handleDuplicateActiveSession}
         showToast={showToast}
         sessionName={sessionName}
         onRenameSession={(name) => void handleRenameSession(name)}
@@ -467,6 +546,7 @@ export default function App() {
         onGoLibrary={() => navigate('library', 'forward')}
         onGoSessions={() => navigate('sessions-list', 'forward')}
         onImport={handleAddBeat}
+        onOpenSettings={() => setSettingsOpen(true)}
         showToast={showToast}
         darkMode={darkMode}
         onToggleDark={toggleTheme}
@@ -652,35 +732,112 @@ interface SettingsSheetProps {
   showToast: (msg: string) => void;
 }
 
-const SettingsSheet = ({ open, onClose, darkMode, onToggleDark, showToast }: SettingsSheetProps) => (
-  <Sheet open={open} onClose={onClose} title="SETTINGS">
-    <div style={{ marginBottom: 4 }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 10 }}>APPEARANCE</div>
-      <button
-        className={`theme-toggle${darkMode ? ' dark-active' : ''}`}
-        style={{ width: '100%', justifyContent: 'space-between' }}
-        onClick={onToggleDark}
-        type="button"
-      >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14 }}>{darkMode ? '🌙' : '☀️'}</span>
-          {darkMode ? 'Studio Mode · ON' : 'Studio Mode · OFF'}
-        </span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: darkMode ? 'var(--spot)' : 'var(--ink-2)', letterSpacing: '.1em' }}>
-          {darkMode ? 'DARK' : 'LIGHT'}
-        </span>
-      </button>
-    </div>
-    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(23,22,26,.25)' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 10 }}>AUDIO</div>
-      <MenuRow icon="mic" label="Input Device" hint="Built-in Microphone" onClick={() => showToast('Input — coming soon')} />
-      <MenuRow icon="cassette" label="Sample Rate" hint="44.1 kHz" onClick={() => showToast('Sample rate — coming soon')} />
-      <MenuRow icon="list" label="Default Format" hint="WAV 16-bit" onClick={() => showToast('Format — coming soon')} />
-    </div>
-    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(23,22,26,.25)' }}>
-      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 10 }}>ABOUT</div>
-      <MenuRow icon="more" label="BeatStudio" hint="v1.0 · build 042" onClick={() => showToast('BeatStudio v1.0')} />
-      <MenuRow icon="share" label="Privacy Policy" hint="beatstudio.app/privacy" onClick={() => showToast('Privacy — coming soon')} />
-    </div>
-  </Sheet>
-);
+const SettingsSheet = ({ open, onClose, darkMode, onToggleDark, showToast }: SettingsSheetProps) => {
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [deviceLabel, setDeviceLabel] = useState('System default');
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const savedId = await getSetting<string>('input_device_id');
+      const savedLabel = await getSetting<string>('input_device_label');
+      if (cancelled) return;
+      setDeviceId(savedId || null);
+      if (savedLabel) setDeviceLabel(savedLabel);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const refreshDevices = async () => {
+    setDevices(await listInputDevices());
+  };
+
+  const pickDevice = async (id: string | null, label: string) => {
+    setDeviceId(id);
+    setDeviceLabel(label);
+    await setSetting('input_device_id', id || '');
+    await setSetting('input_device_label', label);
+    setDevicesOpen(false);
+    showToast(`Input: ${label}`);
+  };
+
+  return (
+    <>
+      <Sheet open={open} onClose={onClose} title="SETTINGS">
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 10 }}>APPEARANCE</div>
+          <button
+            className={`theme-toggle${darkMode ? ' dark-active' : ''}`}
+            style={{ width: '100%', justifyContent: 'space-between' }}
+            onClick={onToggleDark}
+            type="button"
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14 }}>{darkMode ? '🌙' : '☀️'}</span>
+              {darkMode ? 'Studio Mode · ON' : 'Studio Mode · OFF'}
+            </span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: darkMode ? 'var(--spot)' : 'var(--ink-2)', letterSpacing: '.1em' }}>
+              {darkMode ? 'DARK' : 'LIGHT'}
+            </span>
+          </button>
+        </div>
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(23,22,26,.25)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 10 }}>AUDIO</div>
+          <MenuRow
+            icon="mic"
+            label="Input Device"
+            hint={deviceLabel}
+            onClick={async () => {
+              await refreshDevices();
+              setDevicesOpen(true);
+            }}
+          />
+          <MenuRow icon="cassette" label="Sample Rate" hint="44.1 kHz · system default" right={<span />} />
+          <MenuRow icon="list" label="Default Format" hint="WAV 16-bit · MP3 fallback" right={<span />} />
+        </div>
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(23,22,26,.25)' }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 10 }}>ABOUT</div>
+          <MenuRow icon="more" label="BeatStudio" hint="v1.0 · build 042" onClick={() => showToast('BeatStudio v1.0')} />
+          <MenuRow icon="share" label="Privacy Policy" hint="All data stays on this device" onClick={() => showToast('All data stays on this device')} />
+        </div>
+      </Sheet>
+      <Sheet open={devicesOpen} onClose={() => setDevicesOpen(false)} title="INPUT DEVICE">
+        {devices.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-2)' }}>
+            No input devices detected.
+            <div style={{ marginTop: 8, fontSize: 10 }}>Grant mic permission once (tap Record), then reopen this list.</div>
+          </div>
+        ) : (
+          <>
+            <MenuRow
+              icon="mic"
+              label="System Default"
+              hint={!deviceId ? 'Selected' : undefined}
+              right={!deviceId ? <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--spot)' }}>✓</span> : undefined}
+              onClick={() => void pickDevice(null, 'System default')}
+            />
+            {devices.map((d) => {
+              const label = d.label || `Microphone ${d.deviceId.slice(0, 6)}`;
+              const selected = deviceId === d.deviceId;
+              return (
+                <MenuRow
+                  key={d.deviceId}
+                  icon="mic"
+                  label={label}
+                  hint={selected ? 'Selected' : undefined}
+                  right={selected ? <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--spot)' }}>✓</span> : undefined}
+                  onClick={() => void pickDevice(d.deviceId, label)}
+                />
+              );
+            })}
+          </>
+        )}
+      </Sheet>
+    </>
+  );
+};

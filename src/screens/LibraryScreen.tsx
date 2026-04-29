@@ -4,12 +4,15 @@ import { fmtDur } from '../lib/format';
 import { Icon, Grain } from '../components/Icon';
 import { Sheet, MenuRow, PushBtn, PSwitch, Stamp, TapeLabel } from '../components/primitives';
 import { Cassette } from '../components/audio-visuals';
+import { SwipeRow } from '../components/SwipeRow';
 import { useDropZone } from '../hooks/useDropZone';
+import { haptics } from '../lib/haptics';
 
 interface Props {
   beats: Beat[];
   onOpenBeat: (b: Beat) => void;
   onAddBeat: (file: File) => void;
+  onDeleteBeat: (id: string) => void;
   showToast: (msg: string) => void;
   darkMode: boolean;
   onToggleDark: () => void;
@@ -17,7 +20,7 @@ interface Props {
 
 const SORT_CYCLE: Array<'DATE' | 'TITLE' | 'BPM'> = ['DATE', 'TITLE', 'BPM'];
 
-export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, showToast, darkMode, onToggleDark }: Props) => {
+export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, showToast, darkMode, onToggleDark }: Props) => {
   const [moreOpen, setMoreOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [searchActive, setSearchActive] = useState(false);
@@ -76,7 +79,7 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, showToast, darkMod
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <Grain />
-      <div className="fixed-header" style={{ padding: '16px 20px 0', flexShrink: 0 }}>
+      <div className="fixed-header lib-sticky" style={{ padding: '16px 20px 0', flexShrink: 0 }}>
         {searchActive ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1.5px solid var(--line-0)', marginBottom: 16, animation: 'search-expand 150ms var(--ease) both' }}>
             <Icon name="search" size={15} color="var(--ink-2)" />
@@ -343,20 +346,29 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, showToast, darkMod
           {filtered.map((b) => (
             <div key={b.id} style={{ position: 'relative' }}>
               {searchActive && query && (
-                <div style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, border: '2px solid var(--spot)', borderRadius: 7, pointerEvents: 'none', opacity: 0.35 }} />
+                <div style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, border: '2px solid var(--spot)', borderRadius: 7, pointerEvents: 'none', opacity: 0.35, zIndex: 3 }} />
               )}
-              <TapeLabel
-                title={b.title}
-                meta={`${b.bpm} BPM · ${b.key} · ${fmtDur(b.duration)} · ${b.format}`}
-                side={b.side}
-                stamp={b.stamp ?? undefined}
-                color={b.stamp === 'NEW' ? 'var(--spot)' : b.stamp === 'FAV' ? 'var(--ink-0)' : 'var(--ink-2)'}
-                highlight={searchActive && query ? query : undefined}
-                onClick={() => {
-                  if (searchActive) closeSearch();
-                  onOpenBeat(b);
+              <SwipeRow
+                resetSignal={query + sortMode + sortDir + (favOnly ? '1' : '0')}
+                onDelete={() => {
+                  haptics.warn();
+                  onDeleteBeat(b.id);
+                  showToast('Beat removed');
                 }}
-              />
+              >
+                <TapeLabel
+                  title={b.title}
+                  meta={`${b.bpm} BPM · ${b.key} · ${fmtDur(b.duration)} · ${b.format}`}
+                  side={b.side}
+                  stamp={b.stamp ?? undefined}
+                  color={b.stamp === 'NEW' ? 'var(--spot)' : b.stamp === 'FAV' ? 'var(--ink-0)' : 'var(--ink-2)'}
+                  highlight={searchActive && query ? query : undefined}
+                  onClick={() => {
+                    if (searchActive) closeSearch();
+                    onOpenBeat(b);
+                  }}
+                />
+              </SwipeRow>
             </div>
           ))}
         </div>

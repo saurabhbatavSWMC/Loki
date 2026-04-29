@@ -5,6 +5,8 @@ import { Icon, Grain } from '../components/Icon';
 import { Sheet, MenuRow, PushBtn, PSwitch } from '../components/primitives';
 import { TapeReel } from '../components/audio-visuals';
 import { useDropZone } from '../hooks/useDropZone';
+import { renderMix, downloadBlob } from '../audio/mix-export';
+import { loadAudioBlob } from '../db/queries';
 
 interface Props {
   beats: Beat[];
@@ -14,6 +16,7 @@ interface Props {
   onGoLibrary: (b?: Beat) => void;
   onGoSessions: () => void;
   onImport: (file: File) => void;
+  onOpenSettings: () => void;
   showToast: (msg: string) => void;
   darkMode: boolean;
   onToggleDark: () => void;
@@ -27,6 +30,7 @@ export const HomeScreen = ({
   onGoLibrary,
   onGoSessions,
   onImport,
+  onOpenSettings,
   showToast,
   darkMode,
   onToggleDark,
@@ -35,6 +39,42 @@ export const HomeScreen = ({
   const [moreOpen, setMoreOpen] = useState(false);
   const [importTab, setImportTab] = useState<'device' | 'url' | 'youtube' | 'soundcloud'>('device');
   const [url, setUrl] = useState('');
+  const [exportingAll, setExportingAll] = useState(false);
+
+  const handleExportAll = async () => {
+    if (exportingAll) return;
+    const eligible = sessions.filter(
+      (s) => s.takes.some((t) => t.enabled && t.audioBlobKey),
+    );
+    if (eligible.length === 0) {
+      showToast('No sessions have recorded takes');
+      return;
+    }
+    setExportingAll(true);
+    try {
+      let ok = 0;
+      for (let i = 0; i < eligible.length; i++) {
+        const s = eligible[i];
+        showToast(`Exporting ${i + 1}/${eligible.length}: ${s.beat.title}`);
+        try {
+          // Mix down session takes + beat audio (best effort)
+          const beatBlob = s.beat.audioBlobKey ? await loadAudioBlob(s.beat.audioBlobKey) : undefined;
+          const blob = await renderMix({ takes: s.takes, beatBlob });
+          const safeBeat = s.beat.title.replace(/[^a-z0-9]+/gi, '_');
+          const safeName = s.name.replace(/[^a-z0-9]+/gi, '_') || `session_${i + 1}`;
+          downloadBlob(blob, `${safeBeat}__${safeName}.wav`);
+          ok++;
+          // Tiny delay so the browser can flush each download
+          await new Promise((r) => setTimeout(r, 350));
+        } catch (e) {
+          console.warn('[Export-all] failed for session', s.id, e);
+        }
+      }
+      showToast(`Exported ${ok}/${eligible.length} session${eligible.length === 1 ? '' : 's'}`);
+    } finally {
+      setExportingAll(false);
+    }
+  };
 
   const recentSession = sessions[0] || null;
   const totalTakes = sessions.reduce((acc, s) => acc + s.takes.length, 0);
@@ -82,8 +122,13 @@ export const HomeScreen = ({
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="OPTIONS">
         <MenuRow icon="upload" label="Import Beat" hint="Device, URL, or streaming" onClick={() => { setMoreOpen(false); setImportOpen(true); }} />
-        <MenuRow icon="share" label="Export all sessions" hint="Zip of every mix" onClick={() => showToast('Export all — coming soon')} />
-        <MenuRow icon="list" label="Settings" hint="Audio, mic, format" onClick={() => showToast('Settings — coming soon')} />
+        <MenuRow
+          icon="share"
+          label={exportingAll ? 'Exporting…' : 'Export all sessions'}
+          hint={`${sessions.length} session${sessions.length === 1 ? '' : 's'} · downloads as WAVs`}
+          onClick={() => { setMoreOpen(false); void handleExportAll(); }}
+        />
+        <MenuRow icon="list" label="Settings" hint="Audio, mic, format" onClick={() => { setMoreOpen(false); onOpenSettings(); }} />
         <MenuRow icon="more" label="About BeatStudio" hint="v1.0 · build 042" onClick={() => showToast('BeatStudio v1.0')} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderTop: '1px dashed rgba(127,127,127,.25)', marginTop: 4 }}>
           <div style={{ width: 28, height: 28, border: '1.5px solid var(--line-0)', borderRadius: 5, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
