@@ -69,8 +69,8 @@ export async function acquireRecorder(opts: AcquireOpts = {}): Promise<RecorderC
   await unlockAudio();
 
   const audioConstraints: MediaTrackConstraints = {
-    echoCancellation: true,
-    noiseSuppression: true,
+    echoCancellation: false,
+    noiseSuppression: false,
     autoGainControl: false,
   };
   if (opts.deviceId) audioConstraints.deviceId = { exact: opts.deviceId } as MediaTrackConstraintSet['deviceId'];
@@ -89,26 +89,36 @@ export async function acquireRecorder(opts: AcquireOpts = {}): Promise<RecorderC
     if (err?.name === 'OverconstrainedError') {
       // Selected device unavailable — retry without deviceId
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       });
     } else {
       throw new Error(`Mic error: ${err?.message || String(e)}`);
     }
   }
 
-  // Build the audio graph: source → gain → analyser → destination(stream) → recorder
-  // and (optional) gain → audioCtx.destination for monitoring.
+  // Build the audio graph:
+  //   source → gain → splitter → merger(mono→stereo) → analyser → dest → recorder
+  // The merger duplicates the mono mic signal to both L+R channels so playback
+  // comes through both earphones.
   const audioCtx = getAudioContext();
   const source = audioCtx.createMediaStreamSource(stream);
   const gainNode = audioCtx.createGain();
-  gainNode.gain.value = Math.max(0, Math.min(2, opts.gain ?? 1));
+  gainNode.gain.value = Math.max(0, Math.min(4, opts.gain ?? 1));
   const analyser = audioCtx.createAnalyser();
   analyser.fftSize = 1024;
-  // MediaStreamDestination produces a MediaStream we feed into MediaRecorder — this
-  // ensures the recorded signal has the gain applied (and any future processing).
-  const dest = audioCtx.createMediaStreamDestination();
+
+  // Mono → stereo: split the (possibly mono) source, then merge channel 0
+  // into both L and R of a stereo merger.
+  const splitter = audioCtx.createChannelSplitter(1);
+  const merger = audioCtx.createChannelMerger(2);
   source.connect(gainNode);
-  gainNode.connect(analyser);
+  gainNode.connect(splitter);
+  splitter.connect(merger, 0, 0); // mono → left
+  splitter.connect(merger, 0, 1); // mono → right
+
+  merger.connect(analyser);
+
+  const dest = audioCtx.createMediaStreamDestination();
   analyser.connect(dest);
 
   let monitorOn = false;
@@ -116,8 +126,8 @@ export async function acquireRecorder(opts: AcquireOpts = {}): Promise<RecorderC
     if (on === monitorOn) return;
     monitorOn = on;
     try {
-      if (on) gainNode.connect(audioCtx.destination);
-      else gainNode.disconnect(audioCtx.destination);
+      if (on) merger.connect(audioCtx.destination);
+      else merger.disconnect(audioCtx.destination);
     } catch {
       /* disconnect throws if not connected — ignore */
     }
@@ -125,7 +135,7 @@ export async function acquireRecorder(opts: AcquireOpts = {}): Promise<RecorderC
   if (opts.monitor) setMonitor(true);
 
   const setGain = (g: number) => {
-    gainNode.gain.value = Math.max(0, Math.min(2, g));
+    gainNode.gain.value = Math.max(0, Math.min(4, g));
   };
 
   const buf = new Uint8Array(analyser.fftSize);
@@ -217,6 +227,16 @@ export async function acquireRecorder(opts: AcquireOpts = {}): Promise<RecorderC
     }
     try {
       gainNode.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      splitter.disconnect();
+    } catch {
+      /* ignore */
+    }
+    try {
+      merger.disconnect();
     } catch {
       /* ignore */
     }

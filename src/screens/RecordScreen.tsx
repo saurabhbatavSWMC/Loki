@@ -49,7 +49,7 @@ export const RecordScreen = ({
   const recorder = useRecorder();
 
   /* ── persistent settings ─────────────────────────────────── */
-  const [inputGain, setInputGain] = useState(65);
+  const [inputGain, setInputGain] = useState(100);
   const [beatVol, setBeatVol] = useState(70);
   const [monitor, setMonitor] = useState(false);
   const [metronome, setMetronome] = useState(false);
