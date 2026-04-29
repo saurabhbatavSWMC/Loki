@@ -60,8 +60,8 @@
 
 /* ── RESET ───────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{height:100%;background:#2a2825;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-body{height:100%;font-family:var(--font-mono);-webkit-font-smoothing:antialiased;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:28px;flex-wrap:wrap;overflow-x:hidden;overscroll-behavior:none}
+html{height:100%;height:100dvh;background:#2a2825;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{height:100%;height:100dvh;font-family:var(--font-mono);-webkit-font-smoothing:antialiased;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:28px;flex-wrap:wrap;overflow-x:hidden;overscroll-behavior:none}
 button{font-family:inherit;cursor:pointer}
 input{font-family:inherit}
 :focus-visible{outline:2px solid var(--spot);outline-offset:2px}
@@ -285,21 +285,21 @@ input{font-family:inherit}
 
 /* ── MOBILE / STANDALONE PWA OVERRIDES ───────── */
 @media (max-width: 480px), (display-mode: standalone) {
-  html{background:var(--paper-0)}
-  body{padding:0;gap:0;background:var(--paper-0);align-items:stretch}
-  .phone-wrap{position:fixed;inset:0;gap:0}
+  html{background:var(--paper-0);height:100dvh}
+  body{padding:0;gap:0;background:var(--paper-0);align-items:stretch;height:100dvh}
+  .phone-wrap{position:fixed;inset:0;width:100%;height:100dvh;height:100%;gap:0}
   .phone-label{display:none}
   .phone-body{
     width:100%;height:100%;position:relative;
     border-radius:0;box-shadow:none;
     padding-top:env(safe-area-inset-top,0px);
-    padding-bottom:env(safe-area-inset-bottom,0px);
+    padding-bottom:0;
   }
   .phone-notch{display:none}
   .phone-statusbar{display:none}
   .phone-screen{padding-top:env(safe-area-inset-top,0px)}
   .phone-screen.has-tabs{bottom:calc(68px + env(safe-area-inset-bottom,0px))}
-  .tab-bar{padding-bottom:env(safe-area-inset-bottom,0px);height:calc(68px + env(safe-area-inset-bottom,0px))}
+  .tab-bar{position:fixed;bottom:0;left:0;right:0;padding-bottom:env(safe-area-inset-bottom,0px);height:calc(68px + env(safe-area-inset-bottom,0px))}
   .sheet-body{padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))}
 }
 
