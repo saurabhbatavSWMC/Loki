@@ -107,7 +107,7 @@ export const SessionsListScreen = ({
             style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4, overflowY: 'auto', overflowX: 'hidden', height: containerHeight, scrollbarWidth: 'none' }}
           >
             {sessions.map((s, i) => (
-              <div key={s.id} style={{ background: 'var(--paper-0)', border: '1px solid rgba(20,18,15,0.10)', borderRadius: 18, boxShadow: '0 4px 16px rgba(20,18,15,0.12), 0 2px 6px rgba(20,18,15,0.07)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+              <div key={s.id} style={{ background: 'var(--paper-0)', border: '1px solid var(--border-subtle)', borderRadius: 14, boxShadow: 'var(--elev-1)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
                 <button style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%' }} onClick={() => onOpenSession(s)} type="button">
                   <div style={{ display: 'flex', gap: 0 }}>
                     <div style={{ width: 36, background: i === 0 ? 'var(--spot)' : 'var(--ink-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: 'none', flexShrink: 0 }}>
@@ -136,7 +136,7 @@ export const SessionsListScreen = ({
                     </div>
                   </div>
                 </button>
-                <div style={{ borderTop: '1px solid rgba(20,18,15,0.08)', display: 'flex', background: 'var(--paper-1)', borderBottomLeftRadius: 18, borderBottomRightRadius: 18, overflow: 'hidden' }}>
+                <div style={{ borderTop: '1px solid rgba(20,18,15,0.08)', display: 'flex', background: 'var(--paper-1)', borderBottomLeftRadius: 14, borderBottomRightRadius: 14, overflow: 'hidden' }}>
                   <button
                     style={{ all: 'unset', cursor: 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px solid rgba(20,18,15,0.08)' }}
                     onClick={() => onOpenSession(s)}
