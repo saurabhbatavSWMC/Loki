@@ -370,6 +370,47 @@ export const RecordScreen = ({
     beatEndMs: number;
   } | null>(null);
   const autoKeepTimerRef = useRef<number | null>(null);
+  const pendingPlayerRef = useRef<PlaybackController | null>(null);
+  const [pendingPlaying, setPendingPlaying] = useState(false);
+
+  const stopPendingPlayback = () => {
+    pendingPlayerRef.current?.destroy();
+    pendingPlayerRef.current = null;
+    beatPlayerRef.current?.pause();
+    setPendingPlaying(false);
+  };
+
+  const togglePendingPlay = async () => {
+    if (!pending) return;
+    if (pendingPlayerRef.current) {
+      stopPendingPlayback();
+      return;
+    }
+    try {
+      // Cue beat to the position where the take was recorded so the user hears
+      // the take in sync with the beat — same alignment used by the live mix
+      // and the export bounce.
+      const beatPlayer = beatPlayerRef.current;
+      if (beatPlayer) {
+        const beatDur = beatPlayer.duration() || beat.duration;
+        const startSec = Math.min(beatDur, pending.beatStartMs / 1000);
+        beatPlayer.audioEl.loop = false;
+        beatPlayer.seek(startSec);
+        beatPlayer.setVolume(beatVol / 100);
+        beatPlayer.play().catch(() => {});
+      }
+      const player = createPlayback(pending.blob, { volume: 1 });
+      player.audioEl.addEventListener('ended', () => {
+        stopPendingPlayback();
+      });
+      pendingPlayerRef.current = player;
+      setPendingPlaying(true);
+      await player.play();
+    } catch {
+      stopPendingPlayback();
+      showToastRef.current('Could not play take');
+    }
+  };
 
   const commitPending = (p: {
     blob: Blob;
@@ -378,6 +419,7 @@ export const RecordScreen = ({
     beatStartMs: number;
     beatEndMs: number;
   }) => {
+    stopPendingPlayback();
     onFinishTakeRef.current({
       durationMs: p.durationMs,
       blob: p.blob,
@@ -405,9 +447,11 @@ export const RecordScreen = ({
     const payload = { ...result, beatStartMs, beatEndMs };
     setPending(payload);
     if (autoKeepTimerRef.current) clearTimeout(autoKeepTimerRef.current);
+    // Long safety net — the user is expected to explicitly choose KEEP/RETAKE/DISCARD
+    // after listening, so 60s gives time to evaluate without losing the take.
     autoKeepTimerRef.current = window.setTimeout(() => {
       commitPending(payload);
-    }, 5000);
+    }, 60000);
   };
 
   const keepPending = () => {
@@ -418,6 +462,7 @@ export const RecordScreen = ({
 
   const discardPending = () => {
     if (autoKeepTimerRef.current) clearTimeout(autoKeepTimerRef.current);
+    stopPendingPlayback();
     setPending(null);
     showToastRef.current('Take discarded');
   };
@@ -430,6 +475,8 @@ export const RecordScreen = ({
   useEffect(() => {
     return () => {
       if (autoKeepTimerRef.current) clearTimeout(autoKeepTimerRef.current);
+      pendingPlayerRef.current?.destroy();
+      pendingPlayerRef.current = null;
       metronomeStopRef.current?.();
       metronomeStopRef.current = null;
     };
@@ -635,17 +682,6 @@ export const RecordScreen = ({
         )}
       </Sheet>
 
-      {pending && (
-        <div style={{ margin: '4px 20px 8px', background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: 'var(--elev-2)', position: 'relative', zIndex: 8, animation: 'paper-in 220ms var(--ease-io) both' }}>
-          <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: 'var(--spot)', flex: 1 }}>
-            TAKE READY · {fmtTC(pending.durationMs)} · @{fmtTC(pending.beatStartMs)}
-          </span>
-          <button onClick={discardPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-1)', background: 'rgba(20,18,15,.06)', border: 'none', borderRadius: 20, padding: '6px 14px' }} type="button">DISCARD</button>
-          <button onClick={() => void retakePending()} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-0)', background: 'var(--paper-0)', border: '1px solid var(--border-medium)', borderRadius: 20, padding: '6px 14px' }} type="button">RETAKE</button>
-          <button onClick={keepPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 20, padding: '6px 14px', boxShadow: '0 2px 8px rgba(217,58,28,.30)' }} type="button">KEEP</button>
-        </div>
-      )}
-
       <div className="scroll-body" style={{ padding: '4px 20px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {/* ── BEAT WAVEFORM + CUE MARKER + VOLUME ── */}
         <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '12px 14px', position: 'relative', zIndex: 3, boxShadow: 'var(--elev-1)' }}>
@@ -787,6 +823,33 @@ export const RecordScreen = ({
           </div>
           <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 800, color: 'var(--ink-0)', fontVariantNumeric: 'tabular-nums', width: 26, textAlign: 'right' }}>{inputGain}</span>
         </div>
+
+        {/* ── PENDING TAKE: listen + KEEP / RETAKE / DISCARD ── */}
+        {pending && (
+          <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', zIndex: 3, boxShadow: 'var(--elev-2)', animation: 'paper-in 220ms var(--ease-io) both' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={() => void togglePendingPlay()}
+                style={{ all: 'unset', cursor: 'pointer', width: 36, height: 36, borderRadius: '50%', background: pendingPlaying ? 'var(--spot)' : 'var(--paper-0)', border: 'none', boxShadow: pendingPlaying ? '0 4px 12px rgba(217,58,28,.30)' : 'var(--elev-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                type="button"
+                title={pendingPlaying ? 'Stop' : 'Play take'}
+              >
+                <Icon name={pendingPlaying ? 'stop' : 'play'} size={14} color={pendingPlaying ? '#F0EBDF' : 'var(--ink-0)'} />
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: 'var(--spot)' }}>TAKE READY</div>
+                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 700, color: 'var(--ink-1)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                  {fmtTC(pending.durationMs)} · @{fmtTC(pending.beatStartMs)}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={discardPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-1)', background: 'rgba(20,18,15,.06)', border: 'none', borderRadius: 20, padding: '8px 16px' }} type="button">DISCARD</button>
+              <button onClick={() => void retakePending()} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-0)', background: 'var(--paper-0)', border: '1px solid var(--border-medium)', borderRadius: 20, padding: '8px 16px' }} type="button">RETAKE</button>
+              <button onClick={keepPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 20, padding: '8px 16px', boxShadow: '0 2px 8px rgba(217,58,28,.30)' }} type="button">KEEP</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
