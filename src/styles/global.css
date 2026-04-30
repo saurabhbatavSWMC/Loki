@@ -250,10 +250,10 @@ input{font-family:inherit}
 .noscroll{scrollbar-width:none}
 
 /* ── SWIPE-TO-DELETE ROW ──────────────────────── */
-.swipe-row{position:relative;overflow:hidden;border-radius:14px;touch-action:pan-y;margin-right:-4px;padding-right:4px}
-.swipe-row-content{position:relative;z-index:2;transition:transform 220ms var(--ease);background:var(--paper-0)}
+.swipe-row{position:relative;border-radius:14px;touch-action:pan-y;padding:8px 4px}
+.swipe-row-content{position:relative;z-index:2;transition:transform 220ms var(--ease);background:transparent}
 .swipe-row-content.dragging{transition:none}
-.swipe-row-action{position:absolute;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;background:var(--spot);color:#F0EBDF;font-family:var(--font-mono);font-weight:800;font-size:11px;letter-spacing:.14em;z-index:1;gap:6px;border-radius:14px;box-shadow:var(--elev-1)}
+.swipe-row-action{position:absolute;top:8px;right:4px;bottom:8px;display:flex;align-items:center;justify-content:flex-end;padding:0 18px;background:var(--spot);color:#F0EBDF;font-family:var(--font-mono);font-weight:800;font-size:11px;letter-spacing:.14em;z-index:1;gap:6px;border-radius:14px;box-shadow:var(--elev-1)}
 .swipe-row-action button{all:unset;cursor:pointer;color:#F0EBDF;display:flex;align-items:center;gap:4px;padding:8px 4px}
 
 /* ── TAB BAR ─────────────────────────────────── */
