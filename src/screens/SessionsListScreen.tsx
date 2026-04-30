@@ -81,7 +81,7 @@ export const SessionsListScreen = ({
             SESSIONS<br />
             <span style={{ color: 'var(--spot)' }}>ON FILE</span>
           </h1>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: 'var(--ink-2)', borderTop: '1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)', paddingTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: 'var(--ink-2)', borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
             <span>TOTAL · {sessions.length}</span>
             <span>TAKES · {sessions.reduce((a, s) => a + s.takes.length, 0)}</span>
           </div>
@@ -90,7 +90,7 @@ export const SessionsListScreen = ({
 
       <div className="scroll-body" style={{ padding: '0 20px 12px' }}>
         {sessions.length === 0 ? (
-          <div style={{ background: 'var(--paper-1)', border: '2px dashed var(--line-0)', borderRadius: 5, padding: '24px 16px 28px', textAlign: 'center', position: 'relative', zIndex: 3, marginTop: 8 }}>
+          <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '24px 16px 28px', textAlign: 'center', position: 'relative', zIndex: 3, marginTop: 8, boxShadow: 'var(--elev-1)' }}>
             <div style={{ position: 'absolute', top: 12, right: 12 }}>
               <Stamp rotate={6}>BLANK</Stamp>
             </div>
@@ -107,10 +107,10 @@ export const SessionsListScreen = ({
             style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4, overflowY: 'auto', overflowX: 'hidden', height: containerHeight, scrollbarWidth: 'none' }}
           >
             {sessions.map((s, i) => (
-              <div key={s.id} style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, boxShadow: '2px 2px 0 var(--shadow)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+              <div key={s.id} style={{ background: 'var(--paper-0)', border: '1px solid rgba(20,18,15,0.10)', borderRadius: 18, boxShadow: '0 4px 16px rgba(20,18,15,0.12), 0 2px 6px rgba(20,18,15,0.07)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
                 <button style={{ all: 'unset', cursor: 'pointer', display: 'block', width: '100%' }} onClick={() => onOpenSession(s)} type="button">
                   <div style={{ display: 'flex', gap: 0 }}>
-                    <div style={{ width: 36, background: i === 0 ? 'var(--spot)' : 'var(--ink-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: '2px solid var(--line-0)', flexShrink: 0 }}>
+                    <div style={{ width: 36, background: i === 0 ? 'var(--spot)' : 'var(--ink-2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRight: 'none', flexShrink: 0 }}>
                       <div style={{ fontFamily: 'var(--font-disp)', fontSize: 7, fontWeight: 700, letterSpacing: '.1em', color: '#F0EBDF', opacity: 0.7 }}>SN</div>
                       <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 16, letterSpacing: '-.04em', color: '#F0EBDF' }}>{String(i + 1).padStart(2, '0')}</div>
                     </div>
@@ -136,9 +136,9 @@ export const SessionsListScreen = ({
                     </div>
                   </div>
                 </button>
-                <div style={{ borderTop: '1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)', display: 'flex', background: 'var(--paper-1)' }}>
+                <div style={{ borderTop: '1px solid rgba(20,18,15,0.08)', display: 'flex', background: 'var(--paper-1)', borderBottomLeftRadius: 18, borderBottomRightRadius: 18, overflow: 'hidden' }}>
                   <button
-                    style={{ all: 'unset', cursor: 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)' }}
+                    style={{ all: 'unset', cursor: 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px solid rgba(20,18,15,0.08)' }}
                     onClick={() => onOpenSession(s)}
                     type="button"
                   >
@@ -146,7 +146,7 @@ export const SessionsListScreen = ({
                     <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 10, letterSpacing: '.08em', color: 'var(--spot)' }}>OPEN</span>
                   </button>
                   <button
-                    style={{ all: 'unset', cursor: sharingId ? 'wait' : 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)', opacity: sharingId === s.id ? 0.6 : 1 }}
+                    style={{ all: 'unset', cursor: sharingId ? 'wait' : 'pointer', flex: 1, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, borderRight: '1px solid rgba(20,18,15,0.08)', opacity: sharingId === s.id ? 0.6 : 1 }}
                     onClick={() => void handleShare(s)}
                     disabled={!!sharingId}
                     type="button"

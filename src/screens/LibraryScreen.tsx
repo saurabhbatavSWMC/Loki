@@ -82,7 +82,7 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
       <Grain />
       <div className="fixed-header lib-sticky" style={{ padding: '16px 20px 0', flexShrink: 0 }}>
         {searchActive ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1.5px solid var(--line-0)', marginBottom: 16, animation: 'search-expand 150ms var(--ease) both' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border-subtle)', marginBottom: 16, animation: 'search-expand 150ms var(--ease) both' }}>
             <Icon name="search" size={15} color="var(--ink-2)" />
             <input
               ref={searchRef}
@@ -105,7 +105,7 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1.5px solid var(--line-0)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid var(--border-subtle)', marginBottom: 16 }}>
             <div style={{ width: 60 }} />
             <span style={{ fontFamily: 'var(--font-disp)', fontSize: 10, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-0)' }}>CAT. 001</span>
             <div style={{ width: 60, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
@@ -134,8 +134,8 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
           />
           <MenuRow icon="share" label="Export all sessions" hint="Zip of every mix" onClick={() => showToast('Export all — coming soon')} />
           <MenuRow icon="more" label="About BeatStudio" hint="v1.0 · build 042" onClick={() => showToast('BeatStudio v1.0')} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderTop: '1px dashed rgba(127,127,127,.25)', marginTop: 4 }}>
-            <div style={{ width: 28, height: 28, border: '1.5px solid var(--line-0)', borderRadius: 5, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderTop: '1px solid var(--border-subtle)', marginTop: 4 }}>
+            <div style={{ width: 28, height: 28, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-0)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 {darkMode ? (
                   <>
@@ -167,7 +167,7 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
         </Sheet>
 
         <Sheet open={importOpen} onClose={() => { setImportOpen(false); setUrl(''); }} title="LOAD NEW TAPE">
-          <div style={{ display: 'flex', gap: 4, background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: 3, marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 4, background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 22, padding: 3, marginBottom: 14, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.06)' }}>
             {(['device', 'url', 'youtube', 'soundcloud'] as const).map((t) => (
               <button key={t} className={`import-tab${importTab === t ? ' active' : ''}`} onClick={() => setImportTab(t)} type="button">
                 {t.toUpperCase()}
@@ -181,8 +181,8 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
                 onClick={handleChooseFile}
                 style={{
                   border: '2px dashed',
-                  borderColor: dropActive ? 'var(--spot)' : 'var(--line-0)',
-                  borderRadius: 5,
+                  borderColor: dropActive ? 'var(--spot)' : 'var(--border-medium)',
+                  borderRadius: 18,
                   padding: 28,
                   textAlign: 'center',
                   background: dropActive ? 'color-mix(in srgb, var(--spot) 8%, var(--paper-1))' : 'var(--paper-1)',
@@ -196,7 +196,8 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
                     height: 44,
                     borderRadius: '50%',
                     background: 'var(--spot)',
-                    border: '2px solid var(--line-0)',
+                    border: 'none',
+                    boxShadow: '0 4px 14px rgba(217,58,28,.35)',
                     margin: '0 auto 10px',
                     display: 'flex',
                     alignItems: 'center',
@@ -234,7 +235,7 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder={importTab === 'youtube' ? 'https://youtube.com/watch?v=…' : importTab === 'soundcloud' ? 'https://soundcloud.com/…' : 'https://…'}
-                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '10px 12px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--ink-0)' }}
+                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--paper-1)', border: '1px solid var(--border-medium)', borderRadius: 12, padding: '10px 12px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--ink-0)' }}
               />
               <div style={{ marginTop: 14 }}>
                 <PushBtn
@@ -262,7 +263,7 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
               BEATS<br />
               <span style={{ color: 'var(--spot)' }}>ON FILE</span>
             </h1>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: 'var(--ink-2)', borderTop: '1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)', paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 500, color: 'var(--ink-2)', borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
               <span>TOTAL · {beats.length}</span>
               <button
                 style={{ all: 'unset', cursor: 'pointer', fontWeight: 700, color: 'var(--ink-1)' }}
@@ -287,10 +288,10 @@ export const LibraryScreen = ({ beats, onOpenBeat, onAddBeat, onDeleteBeat, show
         {!searchActive && (
           <button
             onClick={() => setImportOpen(true)}
-            style={{ all: 'unset', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: 10, background: 'var(--paper-1)', border: '2px dashed var(--line-0)', borderRadius: 5, marginBottom: 12 }}
+            style={{ all: 'unset', width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: 12, background: 'var(--paper-1)', border: '1.5px dashed var(--border-medium)', borderRadius: 14, marginBottom: 12 }}
             type="button"
           >
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--spot)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--line-0)' }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--spot)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', boxShadow: '0 2px 8px rgba(217,58,28,.30)' }}>
               <Icon name="plus" size={14} color="#F0EBDF" stroke={2.5} />
             </div>
             <div style={{ flex: 1 }}>
@@ -375,7 +376,7 @@ const StackedBeats = ({
         }}
       >
         {!searchActive && beats.length === 0 && !favOnly && (
-          <div style={{ background: 'var(--paper-1)', border: '2px dashed var(--line-0)', borderRadius: 5, padding: '24px 16px 28px', textAlign: 'center', position: 'relative' }}>
+          <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: '24px 16px 28px', textAlign: 'center', position: 'relative', boxShadow: 'var(--elev-1)' }}>
             <div style={{ position: 'absolute', top: 12, right: 12 }}><Stamp rotate={6}>EMPTY</Stamp></div>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14, opacity: 0.45, filter: 'grayscale(0.3)' }}>
               <Cassette width={220} title="" side="A" bpm={0} spinning={false} />
@@ -396,7 +397,7 @@ const StackedBeats = ({
         {filtered.map((b) => (
           <div key={b.id} style={{ position: 'relative', flexShrink: 0 }}>
             {searchActive && query && (
-              <div style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, border: '2px solid var(--spot)', borderRadius: 7, pointerEvents: 'none', opacity: 0.35, zIndex: 3 }} />
+              <div style={{ position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, border: '2px solid var(--spot)', borderRadius: 16, pointerEvents: 'none', opacity: 0.35, zIndex: 3 }} />
             )}
             <SwipeRow
               resetSignal={query + sortMode + sortDir + (favOnly ? '1' : '0')}

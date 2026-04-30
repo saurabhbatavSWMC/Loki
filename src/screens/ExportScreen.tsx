@@ -78,7 +78,7 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
       <div className="fixed-header" style={{ padding: '16px 20px 0' }}>
         <ScreenHeader left={<IconBtn name="close" onClick={onBack} title="Close" />} title="EXPORT MIX" right={null} />
 
-        <div style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '12px 14px', marginBottom: 12, boxShadow: '3px 3px 0 var(--shadow)', position: 'relative', zIndex: 3 }}>
+        <div style={{ background: 'var(--paper-0)', border: 'none', borderRadius: 14, padding: '12px 14px', marginBottom: 12, boxShadow: '0 4px 16px rgba(20,18,15,0.12), 0 2px 6px rgba(20,18,15,0.08)', position: 'relative', zIndex: 3 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <div>
               <div style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.24em', color: 'var(--spot)' }}>
@@ -88,7 +88,7 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
             </div>
             <Stamp rotate={3}>READY</Stamp>
           </div>
-          <div style={{ display: 'flex', gap: 16, fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 700, color: 'var(--ink-2)', borderTop: '1px dashed color-mix(in srgb,var(--ink-0) 30%,transparent)', paddingTop: 8 }}>
+          <div style={{ display: 'flex', gap: 16, fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 700, color: 'var(--ink-2)', borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>
             <span>{beat.bpm} BPM</span>
             <span>{beat.key}</span>
             <span>{enabledCount} TAKES</span>
@@ -154,7 +154,7 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
             </div>
           </div>
 
-          <div style={{ border: '2px solid var(--line-0)', borderRadius: 5, padding: '10px 14px', background: 'var(--paper-1)' }}>
+          <div style={{ border: 'none', borderRadius: 14, padding: '12px 14px', background: 'var(--paper-1)', boxShadow: 'var(--elev-1)' }}>
             <Row label="EST. SIZE" value={estSize()} />
             <Row label="SAMPLE RATE" value="44.1 kHz" />
             <Row label="TAKES IN MIX" value={mixType === 'beat' ? '0 (BEAT ONLY)' : `${enabledCount} ENABLED`} />
@@ -174,8 +174,9 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
                     gap: 10,
                     padding: '8px 10px',
                     background: t.enabled ? 'var(--paper-0)' : 'var(--paper-1)',
-                    border: '1.5px solid var(--line-0)',
-                    borderRadius: 5,
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 12,
+                    boxShadow: t.enabled ? 'var(--elev-1)' : 'none',
                     opacity: t.enabled ? 1 : 0.55,
                   }}
                 >
@@ -188,7 +189,7 @@ export const ExportScreen = ({ beat, takes, exportSerial, onBack, onExport, show
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {t.favorite && <Icon name="star" size={12} color="var(--spot)" />}
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: t.enabled ? '#9BC653' : 'var(--ink-3)', border: '1.5px solid var(--line-0)' }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: t.enabled ? '#9BC653' : 'var(--ink-3)', border: 'none', boxShadow: t.enabled ? '0 0 4px rgba(155,198,83,.5)' : 'none' }} />
                   </div>
                 </div>
               ))}

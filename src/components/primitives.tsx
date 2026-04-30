@@ -52,7 +52,7 @@ export const TportBtn = ({ icon, onClick, active, size = 48, label, color }: Tpo
       <button
         className={active ? 'active' : ''}
         onClick={onClick}
-        style={{ width: size, height: size, background: bg, color: fg, border: '2px solid var(--line-0)' }}
+        style={{ width: size, height: size, background: bg, color: fg, border: 'none' }}
         type="button"
       >
         <Icon name={icon} size={size * 0.38} color={fg} />

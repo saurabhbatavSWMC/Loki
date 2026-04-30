@@ -84,7 +84,7 @@ export const ExportSuccessScreen = ({ beat, exportOpts, exportSerial, exportedBl
         />
       </div>
       <div className="scroll-body" style={{ padding: '0 20px' }}>
-        <div style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '18px 22px', position: 'relative', zIndex: 3, boxShadow: '4px 4px 0 var(--shadow)', marginTop: 10, animation: 'receipt-in 350ms var(--ease-io) both', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--paper-0)', border: 'none', borderRadius: 14, padding: '18px 22px', position: 'relative', zIndex: 3, boxShadow: '0 8px 32px rgba(20,18,15,0.16), 0 4px 12px rgba(20,18,15,0.10)', marginTop: 10, animation: 'receipt-in 350ms var(--ease-io) both', overflow: 'hidden' }}>
           <Grain />
           <div style={{ textAlign: 'center', borderBottom: '2px dashed color-mix(in srgb,var(--ink-0) 40%,transparent)', paddingBottom: 12, marginBottom: 12, position: 'relative', zIndex: 3 }}>
             <div style={{ fontFamily: 'Space Mono', fontSize: 10, fontWeight: 700, letterSpacing: '.3em', color: 'var(--spot)' }}>BEATSTUDIO ∙ RECEIPT</div>
@@ -107,8 +107,8 @@ export const ExportSuccessScreen = ({ beat, exportOpts, exportSerial, exportedBl
           <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 8, background: 'repeating-linear-gradient(90deg,var(--paper-0) 0 8px,transparent 8px 12px)' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16, position: 'relative', zIndex: 3 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '8px 16px' }}>
-            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#7EC37A', border: '2px solid var(--line-0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--paper-1)', border: 'none', borderRadius: 20, padding: '8px 18px', boxShadow: 'var(--elev-1)' }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#7EC37A', border: 'none', boxShadow: '0 2px 6px rgba(126,195,122,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name="check" size={10} color="#F0EBDF" stroke={3} />
             </div>
             <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 11, letterSpacing: '.08em', color: 'var(--ink-0)' }}>Exported. {estSize} · {format}</span>

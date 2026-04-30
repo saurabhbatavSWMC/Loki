@@ -224,14 +224,14 @@ export const BeatDetailScreen = ({ beat, onBack, onStart, onRename, onToggleFavo
               </span>
               <button
                 onClick={() => setConfirmDelete(false)}
-                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: 'var(--ink-2)', border: '1.5px solid var(--ink-2)', borderRadius: 4, padding: '4px 8px' }}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: 'var(--ink-1)', background: 'rgba(20,18,15,.06)', border: 'none', borderRadius: 20, padding: '6px 14px' }}
                 type="button"
               >
                 NO
               </button>
               <button
                 onClick={() => { setConfirmDelete(false); setMoreOpen(false); handleDelete(); }}
-                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: '1.5px solid var(--line-0)', borderRadius: 4, padding: '4px 10px' }}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 20, padding: '6px 14px', boxShadow: '0 2px 8px rgba(217,58,28,.30)' }}
                 type="button"
               >
                 YES
@@ -244,7 +244,7 @@ export const BeatDetailScreen = ({ beat, onBack, onStart, onRename, onToggleFavo
       </div>
 
       <div className="scroll-body" style={{ padding: '0 20px 16px' }}>
-        <div style={{ position: 'relative', zIndex: 3, background: 'var(--deck-grey)', border: '2px solid var(--line-0)', borderRadius: 8, padding: 14, boxShadow: '4px 4px 0 var(--shadow)', marginTop: 4 }}>
+        <div style={{ position: 'relative', zIndex: 3, background: 'var(--deck-grey)', border: 'none', borderRadius: 16, padding: 14, boxShadow: '0 6px 24px rgba(0,0,0,.30), 0 2px 8px rgba(0,0,0,.18)', marginTop: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--spot)', boxShadow: '0 0 4px rgba(217,58,28,.8)' }} />
@@ -255,9 +255,9 @@ export const BeatDetailScreen = ({ beat, onBack, onStart, onRename, onToggleFavo
           <div
             style={{
               background: '#0E0D10',
-              borderRadius: 6,
+              borderRadius: 12,
               padding: 18,
-              border: '2px solid #000',
+              border: 'none',
               boxShadow: 'inset 0 4px 8px rgba(0,0,0,.6)',
               position: 'relative',
               overflow: 'hidden',

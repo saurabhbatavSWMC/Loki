@@ -481,7 +481,7 @@ export const RecordScreen = ({
       </div>
 
       {recorder.error && /denied|permission/i.test(recorder.error) && (
-        <div style={{ margin: '6px 20px 8px', background: 'var(--paper-1)', border: '2px solid var(--spot)', borderRadius: 6, padding: '12px 14px', position: 'relative', zIndex: 8, boxShadow: '3px 3px 0 var(--shadow)' }}>
+        <div style={{ margin: '6px 20px 8px', background: 'var(--paper-1)', border: '1.5px solid var(--spot)', borderRadius: 14, padding: '12px 14px', position: 'relative', zIndex: 8, boxShadow: '0 4px 16px rgba(217,58,28,.18), var(--elev-1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <Stamp rotate={-3} color="var(--spot)">MIC LOCKED</Stamp>
             <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 12, color: 'var(--ink-0)' }}>
@@ -493,7 +493,7 @@ export const RecordScreen = ({
           </div>
           <button
             onClick={() => void recorder.acquire({ deviceId: inputDeviceId ?? undefined, gain: inputGain / 50, monitor })}
-            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 11, letterSpacing: '.08em', color: '#F0EBDF', background: 'var(--spot)', border: '2px solid var(--line-0)', borderRadius: 4, padding: '6px 14px', boxShadow: '2px 2px 0 var(--shadow)' }}
+            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 11, letterSpacing: '.08em', color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 12, padding: '6px 16px', boxShadow: '0 4px 12px rgba(217,58,28,.30)' }}
             type="button"
           >
             ▸ TRY AGAIN
@@ -502,8 +502,8 @@ export const RecordScreen = ({
       )}
 
       <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="RECORD OPTIONS">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px dashed color-mix(in srgb,var(--ink-0) 25%,transparent)' }}>
-          <div style={{ width: 28, height: 28, border: '1.5px solid var(--line-0)', borderRadius: 5, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid color-mix(in srgb,var(--ink-0) 10%,transparent)' }}>
+          <div style={{ width: 28, height: 28, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="cassette" size={14} />
           </div>
           <div style={{ flex: 1 }}>
@@ -512,8 +512,8 @@ export const RecordScreen = ({
           </div>
           <PSwitch on={metronome} onChange={setMetronome} size="sm" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px dashed color-mix(in srgb,var(--ink-0) 25%,transparent)' }}>
-          <div style={{ width: 28, height: 28, border: '1.5px solid var(--line-0)', borderRadius: 5, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid color-mix(in srgb,var(--ink-0) 10%,transparent)' }}>
+          <div style={{ width: 28, height: 28, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="play" size={12} />
           </div>
           <div style={{ flex: 1 }}>
@@ -522,8 +522,8 @@ export const RecordScreen = ({
           </div>
           <PSwitch on={countIn} onChange={setCountIn} size="sm" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px dashed color-mix(in srgb,var(--ink-0) 25%,transparent)' }}>
-          <div style={{ width: 28, height: 28, border: '1.5px solid var(--line-0)', borderRadius: 5, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderBottom: '1px solid color-mix(in srgb,var(--ink-0) 10%,transparent)' }}>
+          <div style={{ width: 28, height: 28, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="cassette" size={14} />
           </div>
           <div style={{ flex: 1 }}>
@@ -560,7 +560,7 @@ export const RecordScreen = ({
         <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 4px 4px' }}>
           <button
             onClick={() => void refreshDevices()}
-            style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: 'var(--ink-2)', padding: '4px 8px', border: '1.5px solid var(--line-0)', borderRadius: 4 }}
+            style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: 'var(--ink-2)', padding: '5px 12px', border: '1px solid var(--border-medium)', borderRadius: 16 }}
             type="button"
             title="Refresh device list"
           >
@@ -615,31 +615,19 @@ export const RecordScreen = ({
       </Sheet>
 
       {pending && (
-        <div style={{ margin: '4px 20px 8px', background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 6, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '3px 3px 0 var(--shadow)', position: 'relative', zIndex: 8, animation: 'paper-in 220ms var(--ease-io) both' }}>
+        <div style={{ margin: '4px 20px 8px', background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8, boxShadow: 'var(--elev-2)', position: 'relative', zIndex: 8, animation: 'paper-in 220ms var(--ease-io) both' }}>
           <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: 'var(--spot)', flex: 1 }}>
             TAKE READY · {fmtTC(pending.durationMs)} · @{fmtTC(pending.beatStartMs)}
           </span>
-          <button onClick={discardPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-2)', border: '1.5px solid var(--ink-2)', borderRadius: 4, padding: '4px 8px' }} type="button">DISCARD</button>
-          <button onClick={() => void retakePending()} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-0)', border: '1.5px solid var(--ink-0)', borderRadius: 4, padding: '4px 8px' }} type="button">RETAKE</button>
-          <button onClick={keepPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: '#F0EBDF', background: 'var(--spot)', border: '1.5px solid var(--line-0)', borderRadius: 4, padding: '4px 10px' }} type="button">KEEP</button>
+          <button onClick={discardPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-1)', background: 'rgba(20,18,15,.06)', border: 'none', borderRadius: 20, padding: '6px 14px' }} type="button">DISCARD</button>
+          <button onClick={() => void retakePending()} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: 'var(--ink-0)', background: 'var(--paper-0)', border: '1px solid var(--border-medium)', borderRadius: 20, padding: '6px 14px' }} type="button">RETAKE</button>
+          <button onClick={keepPending} style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 20, padding: '6px 14px', boxShadow: '0 2px 8px rgba(217,58,28,.30)' }} type="button">KEEP</button>
         </div>
       )}
 
       <div className="scroll-body" style={{ padding: '4px 20px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {/* ── BEAT PILL ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '8px 10px', position: 'relative', zIndex: 3 }}>
-          <div style={{ width: 24, height: 24, background: 'var(--spot)', border: '1.5px solid var(--line-0)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, color: '#F0EBDF' }}>{beat.side}</span>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 12, letterSpacing: '-.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{beat.title}</div>
-            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 9, color: 'var(--ink-2)', letterSpacing: '.1em' }}>{beat.bpm} BPM · {beat.key}</div>
-          </div>
-          {takes.length > 0 && <Stamp rotate={-2}>{takes.length} TK</Stamp>}
-        </div>
-
-        {/* ── BEAT WAVEFORM + CUE MARKER ── */}
-        <div style={{ position: 'relative', zIndex: 3 }}>
+        {/* ── BEAT WAVEFORM + CUE MARKER + VOLUME ── */}
+        <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '12px 14px', position: 'relative', zIndex: 3, boxShadow: 'var(--elev-1)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)' }}>
               BEAT ▸{' '}
@@ -658,7 +646,7 @@ export const RecordScreen = ({
               <button
                 onClick={() => !recording && setBeatPlaying((p) => !p)}
                 disabled={recording}
-                style={{ all: 'unset', cursor: recording ? 'default' : 'pointer', width: 22, height: 22, borderRadius: '50%', background: 'var(--paper-1)', border: '1.5px solid var(--line-0)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: recording ? 0.4 : 1 }}
+                style={{ all: 'unset', cursor: recording ? 'default' : 'pointer', width: 22, height: 22, borderRadius: '50%', background: 'var(--paper-1)', border: 'none', boxShadow: 'var(--elev-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: recording ? 0.4 : 1 }}
                 type="button"
                 title={beatPlaying ? 'Pause preview' : 'Preview from cue'}
               >
@@ -730,47 +718,53 @@ export const RecordScreen = ({
             <span>{fmtTC(beatProgress * beat.duration * 1000)}</span>
             <span style={{ color: 'var(--ink-2)' }}>/ {fmtTC(beat.duration * 1000)}</span>
           </div>
-        </div>
 
-        {/* ── TAPE COUNTER ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 3 }}>
-          <SegDisplay text={tc} size={34} />
-        </div>
-
-        {/* ── VU METER ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', zIndex: 3 }}>
-          <VUMeter level={recorder.level} width={280} />
-        </div>
-
-        {/* ── PEAK METER ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative', zIndex: 3 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <PeakMeter level={recorder.level} />
-            {clip && <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--spot)', animation: 'clip-flash 200ms ease 3' }}>CLIP</span>}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Space Mono,monospace', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)' }}>
-            <span>-24dB</span>
-            <span>PEAK</span>
-            <span style={{ color: 'var(--spot)' }}>0dB</span>
-          </div>
-        </div>
-
-        {/* ── BEAT VOL + MIC GAIN — always visible, even while recording ── */}
-        <div style={{ background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', zIndex: 3 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: 'var(--ink-2)', width: 60 }}>BEAT</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(20,18,15,0.08)' }}>
+            <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: 'var(--ink-2)', width: 40 }}>VOL</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <PSlider value={beatVol} onChange={setBeatVol} />
             </div>
             <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 800, color: 'var(--ink-0)', fontVariantNumeric: 'tabular-nums', width: 26, textAlign: 'right' }}>{beatVol}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: recording ? 'var(--spot)' : 'var(--ink-2)', width: 60 }}>MIC GAIN</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <PSlider value={inputGain} onChange={setInputGain} />
+        </div>
+
+        {/* ── RECORD METER BOX (unified deck card: VU + LED timecode + peak) ── */}
+        <div style={{ background: 'var(--deck)', border: 'none', borderRadius: 14, padding: 14, position: 'relative', zIndex: 3, boxShadow: '0 6px 24px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.30)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: recording ? 'var(--spot)' : '#7EC37A', boxShadow: recording ? '0 0 6px rgba(217,58,28,.9)' : '0 0 4px rgba(126,195,122,.7)', animation: recording ? 'pulse-dot 1s infinite' : undefined }} />
+              <span style={{ fontFamily: 'Space Mono,monospace', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: '#F0EBDF' }}>TAPE IN</span>
             </div>
-            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 800, color: 'var(--ink-0)', fontVariantNumeric: 'tabular-nums', width: 26, textAlign: 'right' }}>{inputGain}</span>
+            <span style={{ fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.14em', color: '#C9C5BC' }}>DECK-01</span>
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <VUMeter level={recorder.level} width={280} />
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+              <SegDisplay text={tc} size={34} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <PeakMeter level={recorder.level} />
+              </div>
+              {clip && <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--spot)', animation: 'clip-flash 200ms ease 3' }}>CLIP</span>}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Space Mono,monospace', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: '#C9C5BC' }}>
+              <span>-24dB</span>
+              <span>PEAK</span>
+              <span style={{ color: 'var(--spot)' }}>0dB</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── MIC GAIN — always visible, even while recording ── */}
+        <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 3, boxShadow: 'var(--elev-1)' }}>
+          <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: recording ? 'var(--spot)' : 'var(--ink-2)', width: 60 }}>MIC GAIN</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <PSlider value={inputGain} onChange={setInputGain} />
+          </div>
+          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 800, color: 'var(--ink-0)', fontVariantNumeric: 'tabular-nums', width: 26, textAlign: 'right' }}>{inputGain}</span>
         </div>
       </div>
     </div>

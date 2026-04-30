@@ -109,7 +109,7 @@ export const HomeScreen = ({
       <Grain />
 
       <div style={{ padding: '16px 20px 0', flexShrink: 0, position: 'relative', zIndex: 4 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1.5px solid var(--line-0)', marginBottom: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid var(--border-subtle)', marginBottom: 0 }}>
           <div style={{ width: 60 }} />
           <span style={{ fontFamily: 'var(--font-disp)', fontSize: 10, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-0)' }}>HOME</span>
           <div style={{ width: 60, display: 'flex', justifyContent: 'flex-end' }}>
@@ -130,8 +130,8 @@ export const HomeScreen = ({
         />
         <MenuRow icon="list" label="Settings" hint="Audio, mic, format" onClick={() => { setMoreOpen(false); onOpenSettings(); }} />
         <MenuRow icon="more" label="About BeatStudio" hint="v1.0 · build 042" onClick={() => showToast('BeatStudio v1.0')} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderTop: '1px dashed rgba(127,127,127,.25)', marginTop: 4 }}>
-          <div style={{ width: 28, height: 28, border: '1.5px solid var(--line-0)', borderRadius: 5, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 4px', borderTop: '1px solid var(--border-subtle)', marginTop: 4 }}>
+          <div style={{ width: 28, height: 28, border: '1px solid var(--border-subtle)', borderRadius: 8, background: 'var(--paper-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-0)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
               {darkMode ? (
                 <>
@@ -176,11 +176,11 @@ export const HomeScreen = ({
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: recentSession ? '#7EC37A' : 'var(--ink-2)', boxShadow: recentSession ? '0 0 4px rgba(126,195,122,.8)' : 'none' }} />
           </div>
         </div>
-        <div style={{ background: '#0E0D10', border: '2px solid #000', borderRadius: 6, padding: '10px 12px', position: 'relative', overflow: 'hidden', boxShadow: 'inset 0 4px 10px rgba(0,0,0,.7)', zIndex: 3 }}>
+        <div style={{ background: '#0E0D10', border: 'none', borderRadius: 10, padding: '10px 12px', position: 'relative', overflow: 'hidden', boxShadow: 'inset 0 4px 10px rgba(0,0,0,.7)', zIndex: 3 }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '30%', background: 'linear-gradient(to bottom,rgba(255,255,255,.05),transparent)', pointerEvents: 'none' }} />
-          <div style={{ width: '100%', height: 80, background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ width: '100%', height: 80, background: 'var(--paper-0)', border: 'none', borderRadius: 8, position: 'relative', overflow: 'hidden' }}>
             <Grain />
-            <div style={{ position: 'absolute', top: 7, left: 7, right: 7, height: 20, background: 'var(--paper-1)', border: '1.5px solid var(--line-0)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px' }}>
+            <div style={{ position: 'absolute', top: 7, left: 7, right: 7, height: 20, background: 'var(--paper-1)', border: 'none', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 8px' }}>
               <span style={{ fontFamily: 'var(--font-disp)', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--spot)' }}>
                 {recentSession ? `SIDE ${recentSession.beat.side}` : 'SIDE —'}
               </span>
@@ -198,7 +198,7 @@ export const HomeScreen = ({
               <TapeReel size={32} spinning speed={6.5} />
             </div>
             <div style={{ position: 'absolute', top: 50, left: 58, right: 58, height: 2, background: 'var(--ink-0)' }} />
-            <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', width: '55%', height: 9, border: '1.5px solid var(--line-0)', borderRadius: 4, background: 'var(--paper-1)', display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '0 6px' }}>
+            <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', width: '55%', height: 9, border: '1px solid var(--border-subtle)', borderRadius: 6, background: 'var(--paper-1)', display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '0 6px' }}>
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-0)' }} />
               ))}
@@ -224,7 +224,7 @@ export const HomeScreen = ({
         </div>
       </div>
 
-      <div style={{ background: 'var(--paper-1)', borderBottom: '2px solid var(--line-0)', padding: '6px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 3, flexShrink: 0 }}>
+      <div style={{ background: 'var(--paper-1)', borderBottom: '1px solid var(--border-subtle)', padding: '6px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 3, flexShrink: 0 }}>
         <span style={{ fontFamily: 'var(--font-disp)', fontSize: 9, fontWeight: 700, letterSpacing: '.18em', color: 'var(--ink-2)' }}>
           {sessions.length} SESSION{sessions.length !== 1 ? 'S' : ''}
         </span>
@@ -247,7 +247,7 @@ export const HomeScreen = ({
               <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 16, letterSpacing: '-.03em', lineHeight: 1, marginTop: 2 }}>SESSIONS</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ background: 'var(--spot)', color: '#F0EBDF', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800, borderRadius: 4, padding: '3px 7px', border: '1.5px solid var(--line-0)' }}>
+              <div style={{ background: 'var(--spot)', color: '#F0EBDF', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800, borderRadius: 12, padding: '3px 9px', border: 'none', boxShadow: '0 2px 6px rgba(217,58,28,.25)' }}>
                 {sessions.length}
               </div>
               <Icon name="next" size={16} color="var(--ink-0)" />
@@ -284,14 +284,14 @@ export const HomeScreen = ({
                   style={{
                     background: 'var(--spot)',
                     color: '#F0EBDF',
-                    border: '2px solid var(--line-0)',
-                    borderRadius: 5,
+                    border: 'none',
+                    borderRadius: 12,
                     fontFamily: 'var(--font-mono)',
                     fontWeight: 800,
                     fontSize: 10,
                     letterSpacing: '.1em',
-                    padding: '5px 10px',
-                    boxShadow: '2px 2px 0 var(--shadow)',
+                    padding: '5px 12px',
+                    boxShadow: '0 4px 12px rgba(217,58,28,.30), var(--elev-1)',
                     flexShrink: 0,
                   }}
                   type="button"
@@ -304,7 +304,7 @@ export const HomeScreen = ({
             </div>
           ))}
           <div className="card-footer-btn" onClick={onNewSession} role="button" tabIndex={0}>
-            <div style={{ width: 22, height: 22, borderRadius: '50%', border: '2px solid var(--line-0)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'var(--paper-1)', boxShadow: 'var(--elev-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Icon name="plus" size={11} color="var(--ink-0)" stroke={2.5} />
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11, letterSpacing: '.06em', color: 'var(--ink-0)' }}>NEW SESSION</span>
@@ -321,7 +321,7 @@ export const HomeScreen = ({
               <div style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 16, letterSpacing: '-.03em', lineHeight: 1, marginTop: 2 }}>BEATS ON FILE</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ background: 'var(--ink-0)', color: '#F0EBDF', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800, borderRadius: 4, padding: '3px 7px', border: '1.5px solid var(--line-0)' }}>
+              <div style={{ background: 'var(--ink-0)', color: '#F0EBDF', fontFamily: 'var(--font-mono)', fontSize: 9, fontWeight: 800, borderRadius: 12, padding: '3px 9px', border: 'none', boxShadow: 'var(--elev-1)' }}>
                 {beats.length}
               </div>
               <Icon name="next" size={16} color="var(--ink-0)" />
@@ -331,7 +331,7 @@ export const HomeScreen = ({
             const sideColor = b.stamp === 'NEW' ? 'var(--spot)' : b.stamp === 'FAV' ? 'var(--ink-0)' : 'var(--ink-2)';
             return (
               <div key={b.id} className="beat-row-home" onClick={() => onGoLibrary(b)}>
-                <div style={{ width: 26, height: 26, background: sideColor, border: '2px solid var(--line-0)', borderRadius: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 26, height: 26, background: sideColor, border: 'none', borderRadius: 8, boxShadow: 'var(--elev-1)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <span style={{ fontFamily: 'var(--font-disp)', fontSize: 6, fontWeight: 700, color: '#F0EBDF', letterSpacing: '.1em' }}>SIDE</span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 10, color: '#F0EBDF', lineHeight: 1 }}>{b.side}</span>
                 </div>
@@ -349,7 +349,7 @@ export const HomeScreen = ({
                   >
                     {b.title}
                     {b.stamp && (
-                      <span style={{ marginLeft: 8, fontSize: 8, color: sideColor, border: `1.5px solid ${sideColor}`, padding: '1px 4px', letterSpacing: '.1em' }}>
+                      <span style={{ marginLeft: 8, fontSize: 8, color: sideColor, border: `1.5px solid ${sideColor}`, borderRadius: 12, padding: '1px 8px', letterSpacing: '.1em' }}>
                         {b.stamp}
                       </span>
                     )}
@@ -363,7 +363,7 @@ export const HomeScreen = ({
             );
           })}
           <div className="card-footer-btn" onClick={() => setImportOpen(true)} role="button" tabIndex={0}>
-            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--spot)', border: '2px solid var(--line-0)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--spot)', border: 'none', boxShadow: '0 2px 8px rgba(217,58,28,.30)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Icon name="upload" size={11} color="#F0EBDF" stroke={2.5} />
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: 11, letterSpacing: '.06em', color: 'var(--ink-0)' }}>LOAD NEW TAPE</span>
@@ -374,7 +374,7 @@ export const HomeScreen = ({
       </div>
 
       <Sheet open={importOpen} onClose={() => { setImportOpen(false); setUrl(''); }} title="LOAD NEW TAPE">
-        <div style={{ display: 'flex', gap: 4, background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: 3, marginBottom: 14 }}>
+        <div style={{ display: 'flex', gap: 4, background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 22, padding: 3, marginBottom: 14, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.06)' }}>
           {(['device', 'url', 'youtube', 'soundcloud'] as const).map((t) => (
             <button key={t} className={`import-tab${importTab === t ? ' active' : ''}`} onClick={() => setImportTab(t)} type="button">
               {t.toUpperCase()}
@@ -388,8 +388,8 @@ export const HomeScreen = ({
               onClick={handleChooseFile}
               style={{
                 border: '2px dashed',
-                borderColor: dropActive ? 'var(--spot)' : 'var(--line-0)',
-                borderRadius: 5,
+                borderColor: dropActive ? 'var(--spot)' : 'var(--border-medium)',
+                borderRadius: 18,
                 padding: 28,
                 textAlign: 'center',
                 background: dropActive ? 'color-mix(in srgb, var(--spot) 8%, var(--paper-1))' : 'var(--paper-1)',
@@ -403,7 +403,8 @@ export const HomeScreen = ({
                   height: 44,
                   borderRadius: '50%',
                   background: 'var(--spot)',
-                  border: '2px solid var(--line-0)',
+                  border: 'none',
+                  boxShadow: '0 4px 14px rgba(217,58,28,.35)',
                   margin: '0 auto 10px',
                   display: 'flex',
                   alignItems: 'center',
@@ -441,7 +442,7 @@ export const HomeScreen = ({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={importTab === 'youtube' ? 'https://youtube.com/watch?v=…' : importTab === 'soundcloud' ? 'https://soundcloud.com/…' : 'https://…'}
-              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--paper-1)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '10px 12px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--ink-0)' }}
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--paper-1)', border: '1px solid var(--border-medium)', borderRadius: 12, padding: '10px 12px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--ink-0)' }}
             />
             <div style={{ marginTop: 14 }}>
               <PushBtn

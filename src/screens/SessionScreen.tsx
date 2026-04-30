@@ -419,7 +419,7 @@ export const SessionScreen = ({
               </span>
               <button
                 onClick={() => setConfirmDeleteSession(false)}
-                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: 'var(--ink-2)', border: '1.5px solid var(--ink-2)', borderRadius: 4, padding: '4px 8px' }}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: 'var(--ink-1)', background: 'rgba(20,18,15,.06)', border: 'none', borderRadius: 20, padding: '6px 14px' }}
                 type="button"
               >
                 NO
@@ -432,7 +432,7 @@ export const SessionScreen = ({
                   onDeleteSession();
                   showToast('Session deleted');
                 }}
-                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: '1.5px solid var(--line-0)', borderRadius: 4, padding: '4px 10px' }}
+                style={{ all: 'unset', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 20, padding: '6px 14px', boxShadow: '0 2px 8px rgba(217,58,28,.30)' }}
                 type="button"
               >
                 YES
@@ -449,7 +449,7 @@ export const SessionScreen = ({
           )}
         </Sheet>
 
-        <div style={{ background: 'var(--paper-0)', border: '2px solid var(--line-0)', borderRadius: 5, padding: '12px 14px', marginBottom: 10, boxShadow: '3px 3px 0 var(--shadow)', position: 'relative', zIndex: 3 }}>
+        <div style={{ background: 'var(--paper-0)', border: '1px solid rgba(20,18,15,0.10)', borderRadius: 16, padding: '12px 14px', marginBottom: 10, boxShadow: '0 4px 16px rgba(20,18,15,0.10), 0 2px 6px rgba(20,18,15,0.06)', position: 'relative', zIndex: 3 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.24em', color: 'var(--spot)' }}>RECORDING ON ▸</div>
@@ -474,7 +474,7 @@ export const SessionScreen = ({
                 </span>
                 <button
                   onClick={() => setBeatPlaying((p) => !p)}
-                  style={{ all: 'unset', cursor: 'pointer', width: 20, height: 20, borderRadius: '50%', background: 'var(--paper-1)', border: '1.5px solid var(--line-0)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ all: 'unset', cursor: 'pointer', width: 20, height: 20, borderRadius: '50%', background: 'var(--paper-1)', border: 'none', boxShadow: 'var(--elev-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   type="button"
                 >
                   <Icon name={beatPlaying ? 'pause' : 'play'} size={10} color="var(--ink-0)" />
@@ -508,7 +508,7 @@ export const SessionScreen = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px dashed color-mix(in srgb,var(--ink-0) 20%,transparent)', paddingTop: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid rgba(20,18,15,0.08)', paddingTop: 10 }}>
             <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 40 }}>BEAT</span>
             <PSlider value={beatVol} onChange={setBeatVol} />
             <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 800, width: 26, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{beatVol}</span>
@@ -522,14 +522,14 @@ export const SessionScreen = ({
           style={{ display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', overflowX: 'hidden', height: containerHeight, scrollbarWidth: 'none' }}
         >
           {takes.length === 0 ? (
-            <div style={{ background: 'var(--paper-1)', border: '2px dashed var(--line-0)', borderRadius: 5, padding: 24, textAlign: 'center', fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--ink-2)' }}>
+            <div style={{ background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 18, padding: 28, textAlign: 'center', fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--ink-2)' }}>
               No takes yet — tap + NEW.
             </div>
           ) : (
             takes.map((t, i) => (
               <div key={t.id} className={`take-card ${t.enabled ? 'enabled' : 'disabled'}`} style={{ flexShrink: 0 }}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ width: 32, alignSelf: 'stretch', borderRight: '1px dashed color-mix(in srgb,var(--ink-0) 40%,transparent)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 32, alignSelf: 'stretch', borderRight: '1px solid rgba(20,18,15,0.08)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)' }}>TK</div>
                     <div style={{ fontFamily: 'JetBrains Mono', fontSize: 20, fontWeight: 800, letterSpacing: '-.05em' }}>{String(i + 1).padStart(2, '0')}</div>
                   </div>
@@ -634,14 +634,14 @@ export const SessionScreen = ({
                       {deleteConfirmId === t.id ? (
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                           <button
-                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 800, color: 'var(--spot)', border: '1.5px solid var(--spot)', borderRadius: 4, padding: '2px 6px' }}
+                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 800, color: '#F0EBDF', background: 'var(--spot)', border: 'none', borderRadius: 14, padding: '4px 10px', boxShadow: '0 2px 6px rgba(217,58,28,.30)' }}
                             onClick={() => { onDeleteTake(t.id); setDeleteConfirmId(null); showToast('Take deleted'); }}
                             type="button"
                           >
                             YES
                           </button>
                           <button
-                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 800, color: 'var(--ink-2)', border: '1.5px solid var(--ink-2)', borderRadius: 4, padding: '2px 6px' }}
+                            style={{ all: 'unset', cursor: 'pointer', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 800, color: 'var(--ink-1)', background: 'rgba(20,18,15,.06)', border: 'none', borderRadius: 14, padding: '4px 10px' }}
                             onClick={() => setDeleteConfirmId(null)}
                             type="button"
                           >

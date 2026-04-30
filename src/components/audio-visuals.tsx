@@ -98,8 +98,8 @@ export const SpoolWaveform = ({ elapsed, seed = 17, height = 48 }: SpoolWaveform
         height,
         width: '100%',
         background: 'var(--paper-1)',
-        border: '2px solid var(--line-0)',
-        borderRadius: 5,
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 12,
         overflow: 'hidden',
       }}
     >
@@ -107,7 +107,7 @@ export const SpoolWaveform = ({ elapsed, seed = 17, height = 48 }: SpoolWaveform
         {visible.map((h, i) => (
           <div
             key={i}
-            style={{ flex: 1, height: `${h * 60}%`, background: 'var(--ink-0)', borderRadius: 0 }}
+            style={{ flex: 1, height: `${h * 60}%`, background: 'var(--ink-0)', borderRadius: 2 }}
           />
         ))}
       </div>
@@ -243,8 +243,9 @@ export const VUMeter = ({ level = 0.4, width = 300 }: VUMeterProps) => {
         height,
         position: 'relative',
         background: 'var(--paper-0)',
-        border: '2px solid var(--line-0)',
-        borderRadius: 6,
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 12,
+        boxShadow: 'var(--elev-1)',
         overflow: 'hidden',
       }}
     >
@@ -347,8 +348,9 @@ export const Cassette = ({
         height: h,
         position: 'relative',
         background: 'var(--paper-0)',
-        border: '2px solid var(--line-0)',
-        borderRadius: 6,
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 14,
+        boxShadow: 'var(--elev-1)',
         overflow: 'hidden',
       }}
     >
@@ -361,8 +363,8 @@ export const Cassette = ({
           right: 8,
           height: h * 0.26,
           background: 'var(--paper-1)',
-          border: '1.5px solid var(--line-0)',
-          borderRadius: 4,
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 8,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -414,8 +416,8 @@ export const Cassette = ({
           transform: 'translateX(-50%)',
           width: '60%',
           height: h * 0.08,
-          border: '1.5px solid var(--line-0)',
-          borderRadius: 4,
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 6,
           display: 'flex',
           justifyContent: 'space-around',
           alignItems: 'center',
