@@ -127,6 +127,27 @@ export const RecordScreen = ({
   // Keep the screen awake while recording or holding the mic open.
   useWakeLock(recorder.recording || recorder.ready);
 
+  /* ── auto-arm the mic so meters go live before pressing REC ── */
+  // Re-arm whenever the saved device or persisted settings change. If permission
+  // has not yet been granted (first visit, no prior user gesture), this fails
+  // silently — the existing "MIC LOCKED" UI covers the denied case, and the
+  // first REC tap will acquire normally.
+  const armedRef = useRef(false);
+  useEffect(() => {
+    if (armedRef.current) return;
+    if (recorder.ready || recorder.recording) return;
+    armedRef.current = true;
+    void recorder.acquire({
+      deviceId: inputDeviceId ?? undefined,
+      gain: inputGain / 50,
+      monitor,
+    }).catch(() => {
+      // permission not yet granted — let user trigger via REC button
+      armedRef.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recorder.ready, recorder.recording, inputDeviceId]);
+
   /* ── beat audio: load + live volume ──────────────────────── */
   useEffect(() => {
     if (!beat.audioBlobKey) return;

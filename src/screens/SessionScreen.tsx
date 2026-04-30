@@ -449,7 +449,22 @@ export const SessionScreen = ({
           )}
         </Sheet>
 
-        <div style={{ background: 'var(--paper-0)', border: '1px solid rgba(20,18,15,0.10)', borderRadius: 16, padding: '12px 14px', marginBottom: 10, boxShadow: '0 4px 16px rgba(20,18,15,0.10), 0 2px 6px rgba(20,18,15,0.06)', position: 'relative', zIndex: 3 }}>
+        <div
+          style={{ background: 'var(--paper-0)', border: '1px solid rgba(20,18,15,0.10)', borderRadius: 16, padding: '12px 14px', marginBottom: 10, boxShadow: '0 4px 16px rgba(20,18,15,0.10), 0 2px 6px rgba(20,18,15,0.06)', position: 'relative', zIndex: 3, cursor: 'pointer' }}
+          onClick={() => {
+            if (mixPlaying) {
+              mixRef.current?.pause();
+              setMixPlaying(false);
+              setBeatProgress(0);
+              setMixTimeSec(0);
+            } else {
+              setBeatPlaying((p) => !p);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          title={(beatPlaying || mixPlaying) ? 'Tap to pause' : 'Tap to play beat'}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.24em', color: 'var(--spot)' }}>RECORDING ON ▸</div>
@@ -466,49 +481,61 @@ export const SessionScreen = ({
           <div style={{ marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
               <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)' }}>
-                BEAT ▸ {beatPlaying ? <span style={{ color: 'var(--spot)' }}>PLAYING</span> : 'SCRUB'}
+                BEAT ▸ {(beatPlaying || mixPlaying) ? <span style={{ color: 'var(--spot)' }}>PLAYING</span> : 'SCRUB'}
               </span>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{ fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 700, color: 'var(--ink-2)', fontVariantNumeric: 'tabular-nums' }}>
                   {fmtTC(beatProgress * beat.duration * 1000)}
                 </span>
                 <button
-                  onClick={() => setBeatPlaying((p) => !p)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (mixPlaying) {
+                      mixRef.current?.pause();
+                      setMixPlaying(false);
+                      setBeatProgress(0);
+                      setMixTimeSec(0);
+                    } else {
+                      setBeatPlaying((p) => !p);
+                    }
+                  }}
                   style={{ all: 'unset', cursor: 'pointer', width: 20, height: 20, borderRadius: '50%', background: 'var(--paper-1)', border: 'none', boxShadow: 'var(--elev-1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   type="button"
                 >
-                  <Icon name={beatPlaying ? 'pause' : 'play'} size={10} color="var(--ink-0)" />
+                  <Icon name={(beatPlaying || mixPlaying) ? 'pause' : 'play'} size={10} color="var(--ink-0)" />
                 </button>
               </div>
             </div>
-            <Waveform
-              progress={beatProgress}
-              seed={beat.bpm * 3}
-              height={34}
-              bars={60}
-              color="var(--spot)"
-              restColor="var(--ink-3)"
-              onScrub={(p) => {
-                setBeatProgress(p);
-                if (mixPlaying && mixRef.current) {
-                  const d = mixRef.current.duration();
-                  mixRef.current.seek(p * d);
-                } else {
-                  const player = beatPlayerRef.current;
-                  if (player) {
-                    player.seek(p * (player.duration() || beat.duration));
+            <div onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+              <Waveform
+                progress={beatProgress}
+                seed={beat.bpm * 3}
+                height={34}
+                bars={60}
+                color="var(--spot)"
+                restColor="var(--ink-3)"
+                onScrub={(p) => {
+                  setBeatProgress(p);
+                  if (mixPlaying && mixRef.current) {
+                    const d = mixRef.current.duration();
+                    mixRef.current.seek(p * d);
+                  } else {
+                    const player = beatPlayerRef.current;
+                    if (player) {
+                      player.seek(p * (player.duration() || beat.duration));
+                    }
+                    setBeatPlaying(true);
                   }
-                  setBeatPlaying(true);
-                }
-              }}
-            />
+                }}
+              />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 500, color: 'var(--ink-2)', marginTop: 3, fontVariantNumeric: 'tabular-nums' }}>
               <span>{fmtTC(beatProgress * beat.duration * 1000)}</span>
               <span>-{fmtTC((1 - beatProgress) * beat.duration * 1000)}</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid rgba(20,18,15,0.08)', paddingTop: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid rgba(20,18,15,0.08)', paddingTop: 10 }} onClick={(e) => e.stopPropagation()}>
             <span style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 40 }}>BEAT</span>
             <PSlider value={beatVol} onChange={setBeatVol} />
             <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fontWeight: 800, width: 26, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{beatVol}</span>
@@ -527,7 +554,15 @@ export const SessionScreen = ({
             </div>
           ) : (
             takes.map((t, i) => (
-              <div key={t.id} className={`take-card ${t.enabled ? 'enabled' : 'disabled'}`} style={{ flexShrink: 0 }}>
+              <div
+                key={t.id}
+                className={`take-card ${t.enabled ? 'enabled' : 'disabled'}`}
+                style={{ flexShrink: 0, cursor: 'pointer' }}
+                onClick={() => { if (editingId !== t.id && deleteConfirmId !== t.id) void playPreview(t); }}
+                role="button"
+                tabIndex={0}
+                title={previewId === t.id ? 'Tap to stop' : 'Tap to play'}
+              >
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <div style={{ width: 32, alignSelf: 'stretch', borderRight: '1px solid rgba(20,18,15,0.08)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)' }}>TK</div>
@@ -548,7 +583,7 @@ export const SessionScreen = ({
                         ) : (
                           <div
                             style={{ fontFamily: 'JetBrains Mono', fontWeight: 800, fontSize: 13, letterSpacing: '-.02em', display: 'flex', alignItems: 'center', gap: 6, cursor: 'text' }}
-                            onClick={() => { setEditingId(t.id); setEditLabel(t.label || `Take ${i + 1}`); }}
+                            onClick={(e) => { e.stopPropagation(); setEditingId(t.id); setEditLabel(t.label || `Take ${i + 1}`); }}
                             title="Tap to rename"
                           >
                             {t.label || `Take ${i + 1}`}
@@ -560,15 +595,17 @@ export const SessionScreen = ({
                           <span style={{ fontSize: 9, color: 'var(--spot)', opacity: 0.8 }}>▸ {fmtTC(t.beatStartMs ?? 0)}</span>
                         </div>
                       </div>
-                      <PSwitch on={t.enabled} onChange={(v) => {
-                        onUpdateTake(t.id, { enabled: v });
-                        if (mixPlaying) {
-                          const mi = getMixIdx(t.id);
-                          if (mi !== null) mixRef.current?.setMuted(mi, !v);
-                        }
-                      }} size="sm" />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <PSwitch on={t.enabled} onChange={(v) => {
+                          onUpdateTake(t.id, { enabled: v });
+                          if (mixPlaying) {
+                            const mi = getMixIdx(t.id);
+                            if (mi !== null) mixRef.current?.setMuted(mi, !v);
+                          }
+                        }} size="sm" />
+                      </div>
                     </div>
-                    <div style={{ marginTop: 8, opacity: t.enabled ? 1 : 0.45 }}>
+                    <div style={{ marginTop: 8, opacity: t.enabled ? 1 : 0.45 }} onClick={(e) => e.stopPropagation()}>
                       <Waveform
                         progress={
                           previewId === t.id ? previewProg
@@ -589,7 +626,7 @@ export const SessionScreen = ({
                         onScrub={(p) => void scrubPreview(t, p)}
                       />
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
                       <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 32 }}>SYNC</span>
                       <PSlider
                         value={Math.round((t.beatStartMs ?? 0) / 100)}
@@ -608,7 +645,7 @@ export const SessionScreen = ({
                         {((t.beatStartMs ?? 0) / 1000).toFixed(1)}s
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
                       <span style={{ fontFamily: 'Space Mono', fontSize: 8, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', width: 28 }}>VOL</span>
                       <PSlider value={t.volume} onChange={(v) => {
                         onUpdateTake(t.id, { volume: v });
