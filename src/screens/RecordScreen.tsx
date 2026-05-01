@@ -53,7 +53,7 @@ export const RecordScreen = ({
   const [beatVol, setBeatVol] = useState(70);
   const [monitor, setMonitor] = useState(false);
   const [metronome, setMetronome] = useState(false);
-  const [countIn, setCountIn] = useState(true);
+  const [countIn, setCountIn] = useState(false);
 
   /* ── ui state ────────────────────────────────────────────── */
   const [moreOpen, setMoreOpen] = useState(false);
@@ -249,10 +249,12 @@ export const RecordScreen = ({
     const player = beatPlayerRef.current;
     if (!player) return;
     if (recorder.recording) {
-      // Beat plays once from the cue position. If recording exceeds the
-      // beat length, the beat just ends — take continues over silence.
+      // Beat plays once from the take's start position (captured when REC
+      // was pressed). Reading from the ref keeps this in sync with the take's
+      // beatStartMs, so the green band on the waveform anchors to the same
+      // position the audio is actually rolling from.
       player.audioEl.loop = false;
-      const startSec = cueProgress * beat.duration;
+      const startSec = recordStartBeatMsRef.current / 1000;
       player.seek(startSec);
       player.play().catch(() => {});
 
@@ -271,11 +273,19 @@ export const RecordScreen = ({
       }, 60);
     } else {
       player.pause();
+      // Snap the audio position back to the cue so it matches the visual
+      // reset. Without this, the player.currentTime stays at the stop
+      // position and the next captureStartPosition() reads that stale value
+      // — making REC after a stop/discard start from where the previous
+      // take ended instead of from the cue marker.
+      const cueSec = cueProgress * beat.duration;
+      if (isFinite(cueSec) && cueSec >= 0) {
+        try { player.seek(cueSec); } catch { /* player may have been destroyed */ }
+      }
       if (beatRef.current) {
         clearInterval(beatRef.current);
         beatRef.current = null;
       }
-      // When stop, snap playhead back to the cue.
       setBeatProgress(cueProgress);
     }
     return () => {
@@ -306,6 +316,10 @@ export const RecordScreen = ({
 
   /* ── start recording: capture cue, play beat, count-in, capture ── */
   const beginRecording = async () => {
+    // Stop any standalone preview before recording takes over the beat player —
+    // otherwise the preview effect can fire again when recording stops and
+    // resume the beat unexpectedly.
+    setBeatPlaying(false);
     // Phase 1 (must be on the user gesture): mic + AudioContext.
     await recorder.acquire({
       deviceId: inputDeviceId ?? undefined,
@@ -320,19 +334,22 @@ export const RecordScreen = ({
       metronomeStopRef.current = startMetronome(beat.bpm, 0.4);
     }
 
-    // Capture the actual beat player position right when capture begins
+    // The take starts at the live beat position when REC is pressed. If the
+    // user previewed the beat, currentTime reflects where they actually are.
+    // If the beat hasn't been touched, currentTime is 0 (or the cue position
+    // after a scrub, since scrub seeks the player). cueProgress is a fallback
+    // for the rare case the player has no valid time yet.
     const captureStartPosition = () => {
+      const totalMs = beat.duration * 1000;
       const player = beatPlayerRef.current;
       if (player) {
-        const d = player.duration();
-        if (d > 0 && isFinite(d)) {
-          recordStartBeatMsRef.current = Math.round((player.currentTime() / d) * beat.duration * 1000);
-        } else {
-          recordStartBeatMsRef.current = Math.round(cueProgress * beat.duration * 1000);
+        const t = player.currentTime();
+        if (isFinite(t) && t >= 0) {
+          recordStartBeatMsRef.current = Math.max(0, Math.min(totalMs, Math.round(t * 1000)));
+          return;
         }
-      } else {
-        recordStartBeatMsRef.current = Math.round(cueProgress * beat.duration * 1000);
       }
+      recordStartBeatMsRef.current = Math.round(cueProgress * totalMs);
     };
 
     if (countIn) {
@@ -371,13 +388,34 @@ export const RecordScreen = ({
   } | null>(null);
   const autoKeepTimerRef = useRef<number | null>(null);
   const pendingPlayerRef = useRef<PlaybackController | null>(null);
+  const pendingProgRef = useRef<number | null>(null);
   const [pendingPlaying, setPendingPlaying] = useState(false);
+  const [pendingProg, setPendingProg] = useState(0); // 0..1 within the take
 
   const stopPendingPlayback = () => {
+    if (pendingProgRef.current !== null) {
+      clearInterval(pendingProgRef.current);
+      pendingProgRef.current = null;
+    }
     pendingPlayerRef.current?.destroy();
     pendingPlayerRef.current = null;
-    beatPlayerRef.current?.pause();
+    // Pause the beat AND snap it back to the cue so the next REC press starts
+    // from the cue marker rather than from wherever the take playback left it.
+    const bp = beatPlayerRef.current;
+    if (bp) {
+      bp.pause();
+      const cueSec = cueProgress * beat.duration;
+      if (isFinite(cueSec) && cueSec >= 0) {
+        try { bp.seek(cueSec); } catch { /* player may have been destroyed */ }
+      }
+    }
+    setBeatProgress(cueProgress);
     setPendingPlaying(false);
+    setPendingProg(0);
+    // Reset preview state so a subsequent waveform tap re-triggers the
+    // preview effect (otherwise beatPlaying may still read true from before
+    // the recording cycle and the effect won't re-run).
+    setBeatPlaying(false);
   };
 
   const togglePendingPlay = async () => {
@@ -405,7 +443,28 @@ export const RecordScreen = ({
       });
       pendingPlayerRef.current = player;
       setPendingPlaying(true);
+      setPendingProg(0);
       await player.play();
+      // Drive the green playhead from the audio element so the marker tracks
+      // the actual decoded position rather than wall-clock time. Also push the
+      // beat playhead (orange line on the waveform) from the live beat player
+      // so the user sees BOTH playheads sweep in sync.
+      pendingProgRef.current = window.setInterval(() => {
+        const p = pendingPlayerRef.current;
+        if (p) {
+          const d = p.duration();
+          if (d > 0 && isFinite(d)) {
+            setPendingProg(Math.max(0, Math.min(1, p.currentTime() / d)));
+          }
+        }
+        const bp = beatPlayerRef.current;
+        if (bp) {
+          const bd = bp.duration() || beat.duration;
+          if (bd > 0 && isFinite(bd)) {
+            setBeatProgress(Math.max(0, Math.min(1, bp.currentTime() / bd)));
+          }
+        }
+      }, 60);
     } catch {
       stopPendingPlayback();
       showToastRef.current('Could not play take');
@@ -434,12 +493,23 @@ export const RecordScreen = ({
     if (!recorder.recording) return;
     metronomeStopRef.current?.();
     metronomeStopRef.current = null;
-    // Capture the beat playhead at the moment we stop — this is where the take ends
-    // on the beat timeline.
+    // Capture the beat playhead at the moment we stop — this is where the take
+    // ends on the beat timeline. Read currentTime BEFORE pausing so we get the
+    // live position, then pause so the beat doesn't keep playing through the
+    // pending-take review.
     const player = beatPlayerRef.current;
-    const stopBeatMs = player
-      ? Math.round((player.currentTime() / Math.max(player.duration(), 0.0001)) * beat.duration * 1000)
-      : recordStartBeatMsRef.current;
+    const totalMs = beat.duration * 1000;
+    let stopBeatMs = recordStartBeatMsRef.current;
+    if (player) {
+      const t = player.currentTime();
+      if (isFinite(t) && t >= 0) {
+        stopBeatMs = Math.max(0, Math.min(totalMs, Math.round(t * 1000)));
+      }
+      player.pause();
+    }
+    // Clear the preview flag so the recording=false transition doesn't kick
+    // the preview effect back on and resume the beat after stopping.
+    setBeatPlaying(false);
     const result = await recorder.stop();
     if (!result) return;
     const beatStartMs = recordStartBeatMsRef.current;
@@ -475,6 +545,7 @@ export const RecordScreen = ({
   useEffect(() => {
     return () => {
       if (autoKeepTimerRef.current) clearTimeout(autoKeepTimerRef.current);
+      if (pendingProgRef.current !== null) clearInterval(pendingProgRef.current);
       pendingPlayerRef.current?.destroy();
       pendingPlayerRef.current = null;
       metronomeStopRef.current?.();
@@ -723,7 +794,7 @@ export const RecordScreen = ({
               color="var(--spot)"
               restColor="var(--ink-3)"
               onScrub={
-                !recording
+                !recording && !pendingPlaying
                   ? (p: number) => {
                       setCueProgress(p);
                       setBeatProgress(p);
@@ -769,6 +840,65 @@ export const RecordScreen = ({
                 }}
               />
             )}
+            {/* Pending take coverage band + start marker (green) */}
+            {pending && (() => {
+              const totalMs = beat.duration * 1000;
+              const startPct = Math.max(0, Math.min(100, (pending.beatStartMs / totalMs) * 100));
+              const endPct = Math.max(startPct, Math.min(100, (pending.beatEndMs / totalMs) * 100));
+              const TAKE_COLOR = '#7EC37A';
+              return (
+                <>
+                  {endPct > startPct && (
+                    <div
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        left: `${startPct}%`,
+                        width: `${endPct - startPct}%`,
+                        background: TAKE_COLOR,
+                        opacity: 0.18,
+                        pointerEvents: 'none',
+                        zIndex: 3,
+                      }}
+                    />
+                  )}
+                  <div
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      bottom: -2,
+                      left: `${startPct}%`,
+                      width: 0,
+                      pointerEvents: 'none',
+                      zIndex: 6,
+                    }}
+                  >
+                    <div style={{ position: 'absolute', top: 0, left: -6, width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: `7px solid ${TAKE_COLOR}` }} />
+                    <div style={{ position: 'absolute', top: 0, left: -1, bottom: 0, width: 2, background: TAKE_COLOR, opacity: 0.85, boxShadow: `0 0 4px ${TAKE_COLOR}` }} />
+                  </div>
+                  {pendingPlaying && endPct > startPct && (
+                    <div
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        top: -2,
+                        bottom: -2,
+                        left: `${startPct + (endPct - startPct) * pendingProg}%`,
+                        width: 2,
+                        background: '#FFFFFF',
+                        boxShadow: `0 0 6px ${TAKE_COLOR}, 0 0 2px #FFFFFF`,
+                        pointerEvents: 'none',
+                        zIndex: 7,
+                        transition: 'left 60ms linear',
+                      }}
+                    />
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'JetBrains Mono', fontSize: 9, fontWeight: 500, color: 'var(--ink-2)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>

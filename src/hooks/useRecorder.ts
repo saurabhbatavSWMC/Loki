@@ -27,6 +27,7 @@ export function useRecorder(): UseRecorderResult {
   const [level, setLevel] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
   const ctrlRef = useRef<RecorderController | null>(null);
+  const acquirePromiseRef = useRef<Promise<void> | null>(null);
   const startedAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
 
@@ -41,28 +42,49 @@ export function useRecorder(): UseRecorderResult {
   }, []);
 
   const acquire = useCallback(async (opts?: AcquireOpts) => {
-    setError(null);
-    try {
-      const ctrl = await acquireRecorder(opts);
-      ctrl.onInterrupt = (reason) => {
-        if (reason === 'mute' || reason === 'ended') {
-          setError('Microphone disconnected.');
-          haptics.warn();
-          ctrl.cancel();
-          ctrlRef.current = null;
-          setRecording(false);
-          setReady(false);
-        }
-      };
-      ctrlRef.current = ctrl;
-      setReady(true);
-      rafRef.current = requestAnimationFrame(tick);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not access microphone.';
-      setError(msg);
-      setReady(false);
-      haptics.error();
+    // Idempotent — if a controller is already live, just update its settings.
+    // Calling getUserMedia twice in flight creates racing MediaStreams; one
+    // ends, onInterrupt fires, and the user sees a spurious "Microphone
+    // disconnected" toast.
+    if (ctrlRef.current) {
+      if (opts?.gain !== undefined) ctrlRef.current.setGain(opts.gain);
+      if (opts?.monitor !== undefined) ctrlRef.current.setMonitor(opts.monitor);
+      setError(null);
+      return;
     }
+    // Coalesce concurrent in-flight acquires (e.g. auto-arm + REC tap) so
+    // getUserMedia is only called once.
+    if (acquirePromiseRef.current) {
+      return acquirePromiseRef.current;
+    }
+    setError(null);
+    const p = (async () => {
+      try {
+        const ctrl = await acquireRecorder(opts);
+        ctrl.onInterrupt = (reason) => {
+          if (reason === 'mute' || reason === 'ended') {
+            setError('Microphone disconnected.');
+            haptics.warn();
+            ctrl.cancel();
+            ctrlRef.current = null;
+            setRecording(false);
+            setReady(false);
+          }
+        };
+        ctrlRef.current = ctrl;
+        setReady(true);
+        rafRef.current = requestAnimationFrame(tick);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Could not access microphone.';
+        setError(msg);
+        setReady(false);
+        haptics.error();
+      } finally {
+        acquirePromiseRef.current = null;
+      }
+    })();
+    acquirePromiseRef.current = p;
+    return p;
   }, [tick]);
 
   const setGain = useCallback((g: number) => {
