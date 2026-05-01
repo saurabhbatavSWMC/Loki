@@ -221,7 +221,6 @@ export default function App() {
     setPendingRenameTakeId(take.id);
     await refresh();
     setSessionBackTarget('record');
-    navigate('session', 'forward');
   };
 
   const updateTake = async (id: string, patch: Partial<Take>) => {
@@ -464,6 +463,7 @@ export default function App() {
         takes={takes}
         onBack={() => navigate(takes.length ? 'session' : 'beat', 'back')}
         onFinishTake={handleFinishTake}
+        onGoSession={() => { setSessionBackTarget('record'); navigate('session', 'forward'); }}
         showToast={showToast}
         onRecordingChange={setIsRecording}
         onCountingChange={setIsCounting}

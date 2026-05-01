@@ -30,6 +30,7 @@ interface Props {
   takes: Take[];
   onBack: () => void;
   onFinishTake: (payload: FinishTakePayload) => void;
+  onGoSession: () => void;
   showToast: (msg: string) => void;
   onRecordingChange?: (rec: boolean) => void;
   onCountingChange?: (counting: boolean) => void;
@@ -41,6 +42,7 @@ export const RecordScreen = ({
   takes,
   onBack,
   onFinishTake,
+  onGoSession,
   showToast,
   onRecordingChange,
   onCountingChange,
@@ -528,6 +530,7 @@ export const RecordScreen = ({
     if (!pending) return;
     if (autoKeepTimerRef.current) clearTimeout(autoKeepTimerRef.current);
     commitPending(pending);
+    showToastRef.current('Take saved');
   };
 
   const discardPending = () => {
@@ -916,7 +919,16 @@ export const RecordScreen = ({
         </div>
 
         {/* ── RECORD METER BOX (unified deck card: VU + LED timecode + peak) ── */}
-        <div style={{ background: 'var(--deck)', border: 'none', borderRadius: 14, padding: 14, position: 'relative', zIndex: 3, boxShadow: '0 6px 24px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.30)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Tap navigates to the session screen so the user can review takes
+            from this session. Disabled while recording (tap would conflict
+            with the live capture context). */}
+        <div
+          style={{ background: 'var(--deck)', border: 'none', borderRadius: 14, padding: 14, position: 'relative', zIndex: 3, boxShadow: '0 6px 24px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.30)', display: 'flex', flexDirection: 'column', gap: 12, cursor: recording ? 'default' : 'pointer' }}
+          onClick={() => { if (!recording) onGoSession(); }}
+          role="button"
+          tabIndex={0}
+          title={recording ? undefined : 'Open session'}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: recording ? 'var(--spot)' : '#7EC37A', boxShadow: recording ? '0 0 6px rgba(217,58,28,.9)' : '0 0 4px rgba(126,195,122,.7)', animation: recording ? 'pulse-dot 1s infinite' : undefined }} />
