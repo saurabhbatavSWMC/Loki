@@ -34,6 +34,7 @@ import { SessionScreen } from './screens/SessionScreen';
 import { SessionsListScreen } from './screens/SessionsListScreen';
 import { ExportScreen } from './screens/ExportScreen';
 import { ExportSuccessScreen } from './screens/ExportSuccessScreen';
+import { OnboardingScreen } from './screens/OnboardingScreen';
 
 interface ToastState {
   msg: string;
@@ -43,7 +44,7 @@ interface ToastState {
 const newId = (prefix: string) => `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 export default function App() {
-  const { ready, beats, sessions, refresh } = useDatabase();
+  const { ready, needsOnboarding, beats, sessions, refresh, markOnboardingDone } = useDatabase();
   const { darkMode, toggle: toggleTheme } = useTheme();
   useStoragePersist();
   const storage = useStorageInfo();
@@ -395,6 +396,22 @@ export default function App() {
           </div>
         </div>
         <div className="phone-label">BEATSTUDIO ▸ INIT</div>
+      </div>
+    );
+  }
+
+  if (needsOnboarding) {
+    return (
+      <div className="phone-wrap">
+        <div className="phone-body" data-theme={darkMode ? 'dark' : 'light'}>
+          <div className="phone-notch" />
+          <OnboardingScreen
+            onDone={markOnboardingDone}
+            darkMode={darkMode}
+            onToggleDark={toggleTheme}
+          />
+        </div>
+        <div className="phone-label">BEATSTUDIO ▸ WELCOME</div>
       </div>
     );
   }
