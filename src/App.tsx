@@ -26,6 +26,8 @@ import { TapeReel } from './components/audio-visuals';
 import { IOSInstallSheet } from './components/IOSInstallSheet';
 import { useHistoryNav } from './hooks/useHistoryNav';
 import { haptics } from './lib/haptics';
+import { getSource, detectSource } from './lib/url/resolve';
+import { TapeSourceError } from './lib/url/sources/types';
 import { HomeScreen } from './screens/HomeScreen';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { BeatDetailScreen } from './screens/BeatDetailScreen';
@@ -302,7 +304,7 @@ export default function App() {
     showToast('Beat removed');
   };
 
-  const handleAddBeat = async (file?: File) => {
+  const handleAddBeat = async (file?: File, opts?: { titleOverride?: string }) => {
     const id = newId('b');
     const blobKey = `beat:${id}`;
     let duration = 180;
@@ -310,7 +312,7 @@ export default function App() {
     let format: string = 'MP3';
 
     if (file) {
-      title = file.name.replace(/\.[^.]+$/, '').toUpperCase();
+      title = (opts?.titleOverride?.trim() || file.name.replace(/\.[^.]+$/, '')).toUpperCase();
       const ext = file.name.split('.').pop()?.toUpperCase() || 'MP3';
       format = ext === 'M4A' ? 'AAC' : ext;
       await saveAudioBlob(blobKey, file, 0);
@@ -343,6 +345,27 @@ export default function App() {
     setBeat(nb);
     navigate('beat', 'forward');
     if (file) showToast('Beat loaded to library');
+  };
+
+  const handleAddBeatFromUrl = async (
+    url: string,
+    onProgress?: (loaded: number, total?: number) => void,
+    signal?: AbortSignal,
+  ) => {
+    const trimmed = url.trim();
+    const detected = detectSource(trimmed);
+    if (detected === 'unknown') throw new TapeSourceError('unsupported_source');
+    if (detected === 'soundcloud') throw new TapeSourceError('not_yet_supported');
+    const source = getSource(trimmed);
+    if (!source) throw new TapeSourceError('unsupported_source');
+
+    const meta = await source.fetchMetadata(trimmed);
+    const blob = await source.fetchAudioBlob(trimmed, meta, onProgress, signal);
+
+    const safeBase = (meta.title || 'tape').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80) || 'tape';
+    const ext = meta.ext ?? 'm4a';
+    const file = new File([blob], `${safeBase}.${ext}`, { type: blob.type || meta.mime || 'audio/mp4' });
+    await handleAddBeat(file, { titleOverride: meta.title });
   };
 
   const goTab = (tab: 'home' | 'library' | 'sessions') => {
@@ -434,6 +457,7 @@ export default function App() {
         }}
         onGoSessions={() => navigate('sessions-list', 'forward')}
         onImport={handleAddBeat}
+        onImportUrl={handleAddBeatFromUrl}
         onOpenSettings={() => setSettingsOpen(true)}
         showToast={showToast}
         darkMode={darkMode}
@@ -564,6 +588,7 @@ export default function App() {
         onGoLibrary={() => navigate('library', 'forward')}
         onGoSessions={() => navigate('sessions-list', 'forward')}
         onImport={handleAddBeat}
+        onImportUrl={handleAddBeatFromUrl}
         onOpenSettings={() => setSettingsOpen(true)}
         showToast={showToast}
         darkMode={darkMode}

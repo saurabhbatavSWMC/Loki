@@ -5,3 +5,6 @@ dist-ssr
 .vite
 .DS_Store
 *.log
+youtube-cookies.json
+.env
+.env.local

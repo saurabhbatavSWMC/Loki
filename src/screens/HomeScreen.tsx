@@ -7,6 +7,8 @@ import { TapeReel } from '../components/audio-visuals';
 import { useDropZone } from '../hooks/useDropZone';
 import { renderMix, downloadBlob } from '../audio/mix-export';
 import { loadAudioBlob } from '../db/queries';
+import { detectSource } from '../lib/url/resolve';
+import { TapeSourceError } from '../lib/url/sources/types';
 
 interface Props {
   beats: Beat[];
@@ -16,6 +18,11 @@ interface Props {
   onGoLibrary: (b?: Beat) => void;
   onGoSessions: () => void;
   onImport: (file: File) => void;
+  onImportUrl: (
+    url: string,
+    onProgress?: (loaded: number, total?: number) => void,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   onOpenSettings: () => void;
   showToast: (msg: string) => void;
   darkMode: boolean;
@@ -30,6 +37,7 @@ export const HomeScreen = ({
   onGoLibrary,
   onGoSessions,
   onImport,
+  onImportUrl,
   onOpenSettings,
   showToast,
   darkMode,
@@ -37,9 +45,83 @@ export const HomeScreen = ({
 }: Props) => {
   const [importOpen, setImportOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [importTab, setImportTab] = useState<'device' | 'url' | 'youtube' | 'soundcloud'>('device');
+  const [importTab, setImportTab] = useState<'device' | 'url'>('device');
   const [url, setUrl] = useState('');
+  const [urlPhase, setUrlPhase] = useState<'idle' | 'resolving' | 'downloading' | 'error'>('idle');
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [urlProgress, setUrlProgress] = useState<{ loaded: number; total?: number } | null>(null);
+  const urlAbortRef = useRef<AbortController | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
+
+  const detectedSource = detectSource(url);
+  const urlValid = detectedSource === 'youtube';
+  const urlUnsupported = detectedSource === 'soundcloud';
+  const urlBusy = urlPhase === 'resolving' || urlPhase === 'downloading';
+
+  const errorMessage = (code: string): string => {
+    switch (code) {
+      case 'invalid_url': return 'That doesn\'t look like a YouTube link.';
+      case 'unsupported_source': return 'Only YouTube links are supported right now.';
+      case 'not_yet_supported': return 'SoundCloud isn\'t supported yet.';
+      case 'live_stream_unsupported': return 'Live streams can\'t be imported.';
+      case 'age_restricted': return 'This video is age-restricted.';
+      case 'private_video': return 'This video is private.';
+      case 'video_unavailable': return 'Video unavailable.';
+      case 'no_audio_format': return 'No audio track found for this video.';
+      case 'no_streaming_data': return 'YouTube blocked this video. Try another link.';
+      default: return 'Couldn\'t load that URL — try again.';
+    }
+  };
+
+  const handleFetchUrl = async () => {
+    if (!urlValid || urlBusy) return;
+    const controller = new AbortController();
+    urlAbortRef.current = controller;
+    setUrlError(null);
+    setUrlPhase('resolving');
+    setUrlProgress(null);
+    try {
+      let switched = false;
+      await onImportUrl(
+        url,
+        (loaded, total) => {
+          if (!switched) {
+            switched = true;
+            setUrlPhase('downloading');
+          }
+          setUrlProgress({ loaded, total });
+        },
+        controller.signal,
+      );
+      setImportOpen(false);
+      setUrl('');
+      setUrlPhase('idle');
+      setUrlProgress(null);
+    } catch (err) {
+      if (controller.signal.aborted) {
+        setUrlPhase('idle');
+        return;
+      }
+      const code = err instanceof TapeSourceError ? err.code : 'fetch_failed';
+      setUrlError(errorMessage(code));
+      setUrlPhase('error');
+    } finally {
+      urlAbortRef.current = null;
+    }
+  };
+
+  const cancelFetchUrl = () => {
+    urlAbortRef.current?.abort();
+  };
+
+  const closeImport = () => {
+    cancelFetchUrl();
+    setImportOpen(false);
+    setUrl('');
+    setUrlPhase('idle');
+    setUrlError(null);
+    setUrlProgress(null);
+  };
 
   const handleExportAll = async () => {
     if (exportingAll) return;
@@ -373,10 +455,10 @@ export const HomeScreen = ({
         </div>
       </div>
 
-      <Sheet open={importOpen} onClose={() => { setImportOpen(false); setUrl(''); }} title="LOAD NEW TAPE">
+      <Sheet open={importOpen} onClose={closeImport} title="LOAD NEW TAPE">
         <div style={{ display: 'flex', gap: 4, background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 22, padding: 3, marginBottom: 14, boxShadow: 'inset 0 1px 3px rgba(0,0,0,.06)' }}>
-          {(['device', 'url', 'youtube', 'soundcloud'] as const).map((t) => (
-            <button key={t} className={`import-tab${importTab === t ? ' active' : ''}`} onClick={() => setImportTab(t)} type="button">
+          {(['device', 'url'] as const).map((t) => (
+            <button key={t} className={`import-tab${importTab === t ? ' active' : ''}`} onClick={() => setImportTab(t)} type="button" disabled={urlBusy}>
               {t.toUpperCase()}
             </button>
           ))}
@@ -436,27 +518,39 @@ export const HomeScreen = ({
         ) : (
           <div>
             <div style={{ fontFamily: 'Space Mono', fontSize: 9, fontWeight: 700, letterSpacing: '.2em', color: 'var(--ink-2)', marginBottom: 6 }}>
-              {importTab === 'youtube' ? 'YOUTUBE URL' : importTab === 'soundcloud' ? 'SOUNDCLOUD URL' : 'AUDIO URL'}
+              TAPE URL
             </div>
             <input
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder={importTab === 'youtube' ? 'https://youtube.com/watch?v=…' : importTab === 'soundcloud' ? 'https://soundcloud.com/…' : 'https://…'}
+              onChange={(e) => { setUrl(e.target.value); if (urlPhase === 'error') { setUrlPhase('idle'); setUrlError(null); } }}
+              placeholder="https://youtube.com/watch?v=…"
+              disabled={urlBusy}
               style={{ width: '100%', boxSizing: 'border-box', background: 'var(--paper-1)', border: '1px solid var(--border-medium)', borderRadius: 12, padding: '10px 12px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--ink-0)' }}
             />
+            <div style={{ minHeight: 18, marginTop: 6, fontFamily: 'JetBrains Mono', fontSize: 10, color: urlPhase === 'error' ? 'var(--spot)' : 'var(--ink-2)' }}>
+              {urlPhase === 'error' && urlError}
+              {urlPhase === 'idle' && url && !urlValid && (urlUnsupported ? 'SoundCloud not supported yet.' : 'YouTube only for now.')}
+              {urlPhase === 'resolving' && 'Looking up…'}
+              {urlPhase === 'downloading' && (
+                urlProgress?.total
+                  ? `Downloading ${Math.floor((urlProgress.loaded / urlProgress.total) * 100)}%`
+                  : `Downloading ${(urlProgress?.loaded ? (urlProgress.loaded / 1024 / 1024).toFixed(1) : '0.0')} MB`
+              )}
+            </div>
+            {urlPhase === 'downloading' && urlProgress?.total && (
+              <div style={{ height: 4, background: 'var(--paper-1)', border: '1px solid var(--border-subtle)', borderRadius: 4, overflow: 'hidden', marginTop: 4 }}>
+                <div style={{ height: '100%', width: `${Math.floor((urlProgress.loaded / urlProgress.total) * 100)}%`, background: 'var(--spot)', transition: 'width 120ms ease' }} />
+              </div>
+            )}
             <div style={{ marginTop: 14 }}>
               <PushBtn
                 variant="rec"
                 size="md"
                 style={{ width: '100%' }}
-                onClick={() => {
-                  setImportOpen(false);
-                  setUrl('');
-                  showToast('URL fetch — coming soon');
-                }}
-                disabled={!url}
+                onClick={urlBusy ? cancelFetchUrl : handleFetchUrl}
+                disabled={!urlBusy && !urlValid}
               >
-                ▸ Fetch &amp; load
+                {urlBusy ? '■ Cancel' : '▸ Fetch & load'}
               </PushBtn>
             </div>
           </div>
