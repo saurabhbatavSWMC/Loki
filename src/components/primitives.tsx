@@ -106,33 +106,92 @@ interface PSliderProps {
 }
 
 export const PSlider = ({ value, onChange, onCommit, onReset, min = 0, max = 100 }: PSliderProps) => {
-  const pct = ((value - min) / (max - min)) * 100;
-  // Touch double-tap detection (mobile browsers don't fire dblclick reliably on range inputs).
-  const lastTapRef = useRef<number>(0);
-  const handleTouchEnd = () => {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+  const lastTapRef = useRef(0);
+  const movedRef = useRef(false);
+  const downXRef = useRef(0);
+
+  const valueFromX = (clientX: number): number => {
+    const el = wrapRef.current;
+    if (!el) return value;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0) return value;
+    const pct = (clientX - rect.left) / rect.width;
+    const clamped = Math.max(0, Math.min(1, pct));
+    return Math.round(min + clamped * (max - min));
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
+    draggingRef.current = true;
+    movedRef.current = false;
+    downXRef.current = e.clientX;
+    onChange(valueFromX(e.clientX));
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    if (Math.abs(e.clientX - downXRef.current) > 2) movedRef.current = true;
+    onChange(valueFromX(e.clientX));
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    (e.currentTarget as HTMLDivElement).releasePointerCapture?.(e.pointerId);
     onCommit?.();
-    if (!onReset) return;
-    const now = Date.now();
-    if (now - lastTapRef.current < 300) {
-      onReset();
-      lastTapRef.current = 0;
-    } else {
-      lastTapRef.current = now;
+    // Touch double-tap reset (browsers don't fire dblclick reliably on touch).
+    if (onReset && e.pointerType !== 'mouse' && !movedRef.current) {
+      const now = Date.now();
+      if (now - lastTapRef.current < 320) {
+        onReset();
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
     }
   };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      onChange(Math.max(min, value - 1));
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      onChange(Math.min(max, value + 1));
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      onChange(min);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      onChange(max);
+    }
+  };
+
+  const pct = ((value - min) / (max - min)) * 100;
+
   return (
-    <div className="p-slider-wrap" title={onReset ? 'Double-click to reset' : undefined}>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        onMouseUp={onCommit}
-        onTouchEnd={handleTouchEnd}
-        onKeyUp={onCommit}
-        onDoubleClick={onReset}
-      />
+    <div
+      ref={wrapRef}
+      className="p-slider-wrap"
+      role="slider"
+      tabIndex={0}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      title={onReset ? 'Double-click to reset' : undefined}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onKeyDown={onKeyDown}
+      onKeyUp={() => onCommit?.()}
+      onDoubleClick={onReset}
+      style={{ touchAction: 'none', cursor: 'pointer', userSelect: 'none' }}
+    >
       <div className="p-slider-track">
         {Array.from({ length: 11 }).map((_, i) => (
           <div
