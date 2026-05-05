@@ -4,6 +4,7 @@ import { fmtTC } from '../lib/format';
 import { Icon, IconBtn, Grain } from '../components/Icon';
 import { Sheet, MenuRow, PushBtn, ScreenHeader, Stamp, PSwitch, PSlider } from '../components/primitives';
 import { Waveform } from '../components/audio-visuals';
+import { SwipeRow } from '../components/SwipeRow';
 import { loadAudioBlob } from '../db/queries';
 import { createPlayback, type PlaybackController } from '../audio/context';
 import { createLiveMix, type LiveMix } from '../audio/live-mix';
@@ -562,7 +563,7 @@ export const SessionScreen = ({
         <div
           style={{
             background: 'var(--paper-0)',
-            border: `1px solid ${selectedTake ? 'rgba(217,58,28,0.32)' : 'rgba(20,18,15,0.10)'}`,
+            border: `1px solid ${selectedTake ? 'rgba(217,58,28,0.32)' : 'var(--border-medium)'}`,
             borderRadius: 16,
             padding: '12px 14px',
             marginBottom: 10,
@@ -862,8 +863,23 @@ export const SessionScreen = ({
                   })()
                 : 0;
               return (
-                <div
+                <SwipeRow
                   key={t.id}
+                  resetSignal={selectedId}
+                  onDelete={() => {
+                    if (selectedId === t.id) setSelectedId(null);
+                    haptics.warn();
+                    onDeleteTake(t.id);
+                    showToast('Take deleted');
+                  }}
+                  onFavorite={() => {
+                    onUpdateTake(t.id, { favorite: !t.favorite });
+                    haptics.warn();
+                    showToast(t.favorite ? 'Unfavorited' : 'Favorited');
+                  }}
+                  favorited={t.favorite}
+                >
+                <div
                   className={`take-card ${t.enabled ? 'enabled' : 'disabled'}`}
                   style={{
                     flexShrink: 0,
@@ -978,6 +994,7 @@ export const SessionScreen = ({
                     </div>
                   </div>
                 </div>
+                </SwipeRow>
               );
             })
           )}

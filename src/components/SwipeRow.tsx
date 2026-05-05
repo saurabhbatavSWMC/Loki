@@ -4,6 +4,10 @@ import { Icon } from './Icon';
 interface SwipeRowProps {
   children: ReactNode;
   onDelete: () => void;
+  /** Optional swipe-right action — revealed by dragging the row to the right. */
+  onFavorite?: () => void;
+  /** Current favorite state — flips the right-action label between FAV and UNFAV. */
+  favorited?: boolean;
   /** When this changes, the row resets to closed. */
   resetSignal?: unknown;
 }
@@ -12,11 +16,12 @@ const REVEAL_PX = 96;
 const ACTIVATE_PX = 64;
 
 /**
- * iOS-style swipe-left-to-delete row. The action is a red strip behind the
- * content; the content translates left as the user drags. Past ACTIVATE_PX it
- * snaps to REVEAL_PX (open). Less than that snaps back to 0.
+ * iOS-style swipe row.
+ *  - Swipe left  → reveals DELETE strip on the right (always available).
+ *  - Swipe right → reveals FAV strip on the left (only when onFavorite is provided).
+ * Past ACTIVATE_PX in either direction it snaps open; less than that snaps back to 0.
  */
-export const SwipeRow = ({ children, onDelete, resetSignal }: SwipeRowProps) => {
+export const SwipeRow = ({ children, onDelete, onFavorite, favorited, resetSignal }: SwipeRowProps) => {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const startXRef = useRef<number | null>(null);
@@ -27,6 +32,32 @@ export const SwipeRow = ({ children, onDelete, resetSignal }: SwipeRowProps) => 
     setOffset(0);
   }, [resetSignal]);
 
+  const clampDrag = (raw: number): number => {
+    let next = raw;
+    if (next > 0) {
+      // Right pull
+      if (!onFavorite) {
+        next = next * 0.2; // resist if no right action
+      } else if (next > REVEAL_PX * 1.4) {
+        // rubber-band beyond fully open
+        next = REVEAL_PX * 1.4 + (next - REVEAL_PX * 1.4) * 0.3;
+      }
+    } else if (next < -REVEAL_PX * 1.4) {
+      next = -REVEAL_PX * 1.4 + (next + REVEAL_PX * 1.4) * 0.3; // rubber-band left
+    }
+    return next;
+  };
+
+  const settle = () => {
+    if (offset <= -ACTIVATE_PX) {
+      setOffset(-REVEAL_PX);
+    } else if (onFavorite && offset >= ACTIVATE_PX) {
+      setOffset(REVEAL_PX);
+    } else {
+      setOffset(0);
+    }
+  };
+
   const onTouchStart = (e: React.TouchEvent) => {
     startXRef.current = e.touches[0].clientX;
     startOffsetRef.current = offset;
@@ -36,26 +67,16 @@ export const SwipeRow = ({ children, onDelete, resetSignal }: SwipeRowProps) => 
   const onTouchMove = (e: React.TouchEvent) => {
     if (startXRef.current === null) return;
     const dx = e.touches[0].clientX - startXRef.current;
-    const dy = e.touches[0].clientY ? Math.abs(e.touches[0].clientY - (e.touches[0].clientY)) : 0;
-    void dy;
-    // Lock to horizontal once movement is decisively sideways
     if (lockedRef.current === null) {
       if (Math.abs(dx) > 8) lockedRef.current = 'h';
     }
     if (lockedRef.current !== 'h') return;
-    let next = startOffsetRef.current + dx;
-    if (next > 0) next = next * 0.2; // resist over-pull right
-    if (next < -REVEAL_PX * 1.4) next = -REVEAL_PX * 1.4 + (next + REVEAL_PX * 1.4) * 0.3; // rubber-band left
-    setOffset(next);
+    setOffset(clampDrag(startOffsetRef.current + dx));
   };
   const onTouchEnd = () => {
     setDragging(false);
     startXRef.current = null;
-    if (offset <= -ACTIVATE_PX) {
-      setOffset(-REVEAL_PX);
-    } else {
-      setOffset(0);
-    }
+    settle();
   };
 
   // Pointer (mouse) support for desktop testing
@@ -72,41 +93,73 @@ export const SwipeRow = ({ children, onDelete, resetSignal }: SwipeRowProps) => 
     const dx = e.clientX - startXRef.current;
     if (lockedRef.current === null && Math.abs(dx) > 8) lockedRef.current = 'h';
     if (lockedRef.current !== 'h') return;
-    let next = startOffsetRef.current + dx;
-    if (next > 0) next = next * 0.2;
-    if (next < -REVEAL_PX * 1.4) next = -REVEAL_PX * 1.4 + (next + REVEAL_PX * 1.4) * 0.3;
-    setOffset(next);
+    setOffset(clampDrag(startOffsetRef.current + dx));
   };
   const onPointerUp = (e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
     setDragging(false);
     startXRef.current = null;
-    if (offset <= -ACTIVATE_PX) setOffset(-REVEAL_PX);
-    else setOffset(0);
+    settle();
   };
 
-  // Click outside content to reset (helps when row is open)
   const close = () => setOffset(0);
 
   return (
     <div className="swipe-row">
-      <div className="swipe-row-action" style={{ width: REVEAL_PX }}>
+      {/* Right-side DELETE action (revealed by swiping LEFT) */}
+      <div
+        className="swipe-row-action"
+        style={{ width: REVEAL_PX, justifyContent: 'center', padding: 0, color: 'var(--paper-0)' }}
+      >
         <button
-          onClick={() => {
-            close();
-            onDelete();
-          }}
+          onClick={() => { close(); onDelete(); }}
           aria-label="Delete"
           type="button"
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}
+          style={{ all: 'unset', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'inherit' }}
         >
-          <Icon name="trash" size={16} color="#F0EBDF" />
-          <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: '.16em' }}>DELETE</span>
+          <Icon name="trash" size={18} color="var(--paper-0)" />
+          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.16em' }}>DELETE</span>
         </button>
       </div>
+
+      {/* Left-side FAVORITE action (revealed by swiping RIGHT) — only when onFavorite is passed */}
+      {onFavorite && (
+        <div
+          className="swipe-row-action"
+          style={{
+            width: REVEAL_PX,
+            right: 'auto',
+            left: 4,
+            justifyContent: 'center',
+            padding: 0,
+            background: 'var(--ink-0)',
+            color: 'var(--paper-0)',
+          }}
+        >
+          <button
+            onClick={() => { close(); onFavorite(); }}
+            aria-label={favorited ? 'Unfavorite' : 'Favorite'}
+            type="button"
+            style={{ all: 'unset', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'inherit' }}
+          >
+            <Icon name="star" size={18} color={favorited ? 'var(--spot)' : 'var(--paper-0)'} />
+            <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.16em' }}>
+              {favorited ? 'UNFAV' : 'FAV'}
+            </span>
+          </button>
+        </div>
+      )}
+
       <div
         className={`swipe-row-content${dragging ? ' dragging' : ''}`}
-        style={{ transform: `translateX(${offset}px)` }}
+        style={{
+          transform: `translateX(${offset}px)`,
+          // Opaque backing so action strips never bleed through translucent children
+          // (e.g. a disabled take card with opacity:.65). Matches the 14px radius used
+          // by take-card and TapeLabel so corners stay clean.
+          background: 'var(--paper-0)',
+          borderRadius: 14,
+        }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -115,7 +168,6 @@ export const SwipeRow = ({ children, onDelete, resetSignal }: SwipeRowProps) => 
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onClickCapture={(e) => {
-          // If row is open, the first click closes it instead of activating the child.
           if (offset !== 0) {
             e.preventDefault();
             e.stopPropagation();
