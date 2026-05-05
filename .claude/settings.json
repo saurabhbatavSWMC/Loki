@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\saurabh.batav\\\\Desktop\\\\Ex T\\\\app\\\\Loki\" -Recurse -Directory)",
+      "Bash(Select-Object -First 20)",
+      "Bash(Format-Table FullName)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

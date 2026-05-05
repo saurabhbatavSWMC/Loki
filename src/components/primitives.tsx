@@ -97,20 +97,41 @@ export const PSwitch = ({ on, onChange, size = 'md' }: PSwitchProps) => {
 interface PSliderProps {
   value: number;
   onChange: (v: number) => void;
+  /** Called when the user releases the slider (mouse up, touch end, key up). */
+  onCommit?: () => void;
+  /** Called when the user double-clicks/double-taps the slider — typically to reset to a default. */
+  onReset?: () => void;
   min?: number;
   max?: number;
 }
 
-export const PSlider = ({ value, onChange, min = 0, max = 100 }: PSliderProps) => {
+export const PSlider = ({ value, onChange, onCommit, onReset, min = 0, max = 100 }: PSliderProps) => {
   const pct = ((value - min) / (max - min)) * 100;
+  // Touch double-tap detection (mobile browsers don't fire dblclick reliably on range inputs).
+  const lastTapRef = useRef<number>(0);
+  const handleTouchEnd = () => {
+    onCommit?.();
+    if (!onReset) return;
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      onReset();
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
   return (
-    <div className="p-slider-wrap">
+    <div className="p-slider-wrap" title={onReset ? 'Double-click to reset' : undefined}>
       <input
         type="range"
         min={min}
         max={max}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        onMouseUp={onCommit}
+        onTouchEnd={handleTouchEnd}
+        onKeyUp={onCommit}
+        onDoubleClick={onReset}
       />
       <div className="p-slider-track">
         {Array.from({ length: 11 }).map((_, i) => (

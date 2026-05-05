@@ -27,6 +27,8 @@ export interface Take {
   beatStartMs?: number;
   /** Where on the beat timeline recording stopped (ms). */
   beatEndMs?: number;
+  /** User-confirmed timing status. Undefined/false = "Need Fix", true = "Aligned". */
+  aligned?: boolean;
 }
 
 export interface Session {
